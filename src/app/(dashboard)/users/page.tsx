@@ -328,13 +328,13 @@ export default function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[35%] min-w-[180px] font-medium">Tên</TableHead>
-                    <TableHead className="w-[25%] min-w-[120px] font-medium">
+                    <TableHead className="w-[25%] min-w-[120px] font-medium hidden sm:table-cell">
                       <div className="flex items-center justify-center">
                         <CreditCard className="h-4 w-4 mr-2" />
                         Số tài khoản
                       </div>
                     </TableHead>
-                    <TableHead className="w-[25%] min-w-[120px] font-medium">
+                    <TableHead className="w-[25%] min-w-[120px] font-medium hidden sm:table-cell">
                       <div className="flex items-center justify-center">
                         <Building className="h-4 w-4 mr-2" />
                         Ngân hàng
@@ -346,15 +346,28 @@ export default function UsersPage() {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id} className="group">
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell className="text-center">{user.bank_account || "—"}</TableCell>
-                      <TableCell className="text-center">{user.bank_name || "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>{user.name}</div>
+                        {/* Mobile view - show bank info in the name cell */}
+                        <div className="sm:hidden mt-1 space-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center">
+                            <CreditCard className="h-3 w-3 mr-1" />
+                            <span>{user.bank_account || "—"}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Building className="h-3 w-3 mr-1" />
+                            <span>{user.bank_name || "—"}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center hidden sm:table-cell">{user.bank_account || "—"}</TableCell>
+                      <TableCell className="text-center hidden sm:table-cell">{user.bank_name || "—"}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+                              className="h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 sm:data-[state=open]:opacity-100"
                             >
                               <span className="sr-only">Mở menu</span>
                               <MoreHorizontal className="h-4 w-4" />
