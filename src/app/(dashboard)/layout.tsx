@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { ReceiptText, Calculator, Menu, X, ChevronRight } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ReceiptText, Calculator, Menu, X, ChevronRight, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/mobile-nav';
+import Cookies from 'js-cookie';
+
+const ACCESS_TOKEN_KEY = 'ez_split_access_token';
 
 export default function DashboardLayout({
   children,
@@ -13,6 +16,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   
@@ -26,9 +30,30 @@ export default function DashboardLayout({
     setMounted(true);
   }, []);
   
+  useEffect(() => {
+    // Check if user is authenticated by checking both localStorage and cookies
+    const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const cookieToken = Cookies.get(ACCESS_TOKEN_KEY);
+    
+    if (!localToken && !cookieToken) {
+      router.replace('/auth/login');
+    } else if (localToken && !cookieToken) {
+      // Synchronize tokens if they exist in localStorage but not in cookies
+      Cookies.set(ACCESS_TOKEN_KEY, localToken, { 
+        expires: 7, 
+        path: '/', 
+        sameSite: 'strict' 
+      });
+    } else if (!localToken && cookieToken) {
+      // Synchronize tokens if they exist in cookies but not in localStorage
+      localStorage.setItem(ACCESS_TOKEN_KEY, cookieToken);
+    }
+  }, [router]);
+  
   const navigation = [
     { name: 'Chi tiêu', href: '/expenses', icon: ReceiptText, description: 'Quản lý các khoản chi tiêu' },
     { name: 'Kết quả', href: '/summary', icon: Calculator, description: 'Xem kết quả chia tiền' },
+    { name: 'Người dùng', href: '/users', icon: Users, description: 'Quản lý người dùng trong nhóm' },
   ];
 
   if (!mounted) return null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Users, Wallet, Search, MoreHorizontal, Calendar, Split, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Wallet, Search, MoreHorizontal, Calendar, Split, CheckCircle2, RefreshCw } from 'lucide-react';
 import { getExpensesWithStatus, deleteExpense, ExpenseWithStatus } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { CardFooter } from '@/components/ui/card';
@@ -42,6 +42,7 @@ export default function ExpensesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<number | null>(null);
+  const [isReloading, setIsReloading] = useState(false);
 
   // Get the expense being deleted
   const expenseBeingDeleted = expenseToDelete !== null 
@@ -50,6 +51,7 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
+      setIsReloading(true);
       setIsLoading(true);
       setError(null);
       const data = await getExpensesWithStatus();
@@ -59,6 +61,7 @@ export default function ExpensesPage() {
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsReloading(false);
     }
   };
 
@@ -128,8 +131,15 @@ export default function ExpensesPage() {
             />
           </div>
           <div className="flex flex-shrink-0 gap-3 w-full sm:w-auto">
-            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-center" onClick={fetchExpenses}>
-              <span className={isLoading ? "animate-spin mr-1" : "mr-1"}>↻</span> Tải lại
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-9 w-full sm:w-auto justify-center relative transition-all duration-200 ease-in-out" 
+              onClick={fetchExpenses}
+              disabled={isLoading || isReloading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 transition-transform ${isReloading ? "animate-spin" : ""}`} />
+              Tải lại
             </Button>
           </div>
         </div>
@@ -143,6 +153,7 @@ export default function ExpensesPage() {
           <div className="bg-destructive/10 p-6 rounded-lg text-destructive text-center border border-destructive/20">
             <p className="font-medium mb-2">{error}</p>
             <Button variant="outline" size="sm" onClick={fetchExpenses}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isReloading ? "animate-spin" : ""}`} />
               Thử lại
             </Button>
           </div>

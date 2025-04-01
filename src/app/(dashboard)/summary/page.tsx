@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, RefreshCw, Wallet2, UserRound, DollarSign, Receipt, CheckCircle } from 'lucide-react';
-import { getSummary, UserSummary, Transaction, getExpensesTransactions, TransactionsByExpense } from '@/lib/api';
+import { getSummary, UserSummary, getExpensesTransactions, TransactionsByExpense } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
@@ -11,7 +11,6 @@ import Link from 'next/link';
 
 export default function SummaryPage() {
   const [userSummary, setUserSummary] = useState<UserSummary[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [expensesTransactions, setExpensesTransactions] = useState<TransactionsByExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +30,6 @@ export default function SummaryPage() {
         ]);
         
         setUserSummary(summaryData.userSummary);
-        setTransactions(summaryData.transactions);
         setExpensesTransactions(expensesTransactionsData);
       } catch (err) {
         setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
@@ -55,7 +53,6 @@ export default function SummaryPage() {
       ]);
       
       setUserSummary(summaryData.userSummary);
-      setTransactions(summaryData.transactions);
       setExpensesTransactions(expensesTransactionsData);
       setError(null);
     } catch (err) {

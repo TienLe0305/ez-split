@@ -20,6 +20,7 @@ import {
 // Key factory for queries
 export const queryKeys = {
   users: ['users'],
+  user: (id: number) => ['users', id],
   expenses: ['expenses'],
   expense: (id: number) => ['expenses', id],
   summary: ['summary'],
@@ -34,6 +35,49 @@ export function useUsers(options?: UseQueryOptions<User[]>) {
     queryKey: queryKeys.users,
     queryFn: () => api.getUsers(),
     ...options,
+  });
+}
+
+export function useUser(id: number, options?: UseQueryOptions<User>) {
+  return useQuery({
+    queryKey: queryKeys.user(id),
+    queryFn: () => api.getUserById(id),
+    ...options,
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (userData: Omit<User, 'id'>) => api.createUser(userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, userData }: { id: number; userData: Partial<Omit<User, 'id'>> }) => 
+      api.updateUser(id, userData),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      queryClient.invalidateQueries({ queryKey: queryKeys.user(data.id) });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: number) => api.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+    },
   });
 }
 

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Receipt, BarChart, Plus } from "lucide-react";
+import { Home, Receipt, BarChart, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -10,6 +10,7 @@ const links = [
   { href: "/expenses", label: "Chi tiêu", icon: Receipt },
   { href: "/expenses/new", label: "Thêm mới", icon: Plus },
   { href: "/summary", label: "Tổng kết", icon: BarChart },
+  { href: "/users", label: "Người dùng", icon: Users },
 ];
 
 export function MobileNav() {
@@ -17,7 +18,7 @@ export function MobileNav() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t border-border">
-      <div className="grid h-full grid-cols-4">
+      <div className="grid h-full grid-cols-5">
         {links.map((link) => {
           // Special logic for active states to handle path overlaps
           let isActive = false;
@@ -30,6 +31,9 @@ export function MobileNav() {
             isActive = pathname === "/expenses" || 
                       (pathname.startsWith("/expenses/") && 
                        pathname !== "/expenses/new");
+          } else if (link.href === "/users") {
+            // "Người dùng" is active for /users and all subpaths
+            isActive = pathname === "/users" || pathname.startsWith("/users/");
           } else {
             // Other nav items follow standard logic
             isActive = pathname === link.href || pathname.startsWith(link.href);
@@ -40,19 +44,14 @@ export function MobileNav() {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex flex-col items-center justify-center px-2 transition-colors duration-200",
+                "flex flex-col items-center justify-center h-full w-full text-xs space-y-1",
                 isActive 
-                  ? "text-primary font-medium" 
-                  : "text-muted-foreground hover:text-primary/80"
+                  ? "text-primary" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <div className={cn(
-                "flex items-center justify-center",
-                isActive && "bg-primary/10 p-1.5 rounded-full"
-              )}>
-                <link.icon className="w-5 h-5" />
-              </div>
-              <span className="text-xs mt-1">{link.label}</span>
+              <link.icon className="h-5 w-5" />
+              <span>{link.label}</span>
             </Link>
           );
         })}

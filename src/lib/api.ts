@@ -116,6 +116,81 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
+export async function getUserById(id: number): Promise<User> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch user');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching user with ID ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function createUser(userData: Omit<User, 'id'>): Promise<User> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create user');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+}
+
+export async function updateUser(id: number, userData: Partial<Omit<User, 'id'>>): Promise<User> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update user');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating user with ID ${id}:`, error);
+    throw error;
+  }
+}
+
+export async function deleteUser(id: number): Promise<{ message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete user');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error deleting user with ID ${id}:`, error);
+    throw error;
+  }
+}
+
 export async function getExpenses(): Promise<Expense[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/expenses`);

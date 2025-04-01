@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt, CalendarIcon } from 'lucide-react';
@@ -144,9 +144,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   }, [payerId, users, selectedParticipants]);
   
   // Update amount when thousands input changes
-  const handleAmountChange = (newAmount: number) => {
+  const handleAmountChange = useCallback((newAmount: number) => {
     setAmount(newAmount.toString());
-  };
+  }, []);
   
   // Calculate equal share when amount or participants change
   useEffect(() => {
@@ -178,7 +178,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   }, [amount, selectedParticipants, equalSplit]);
   
   // Toggle participant selection
-  const toggleParticipant = (userId: number) => {
+  const toggleParticipant = useCallback((userId: number) => {
     const newSelected = { ...selectedParticipants };
     newSelected[userId] = !newSelected[userId];
     setSelectedParticipants(newSelected);
@@ -192,10 +192,10 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       setParticipantAmounts(newAmounts);
       setParticipantThousands(newThousands);
     }
-  };
+  }, [selectedParticipants, participantAmounts, participantThousands]);
   
   // Update participant amount
-  const updateParticipantAmount = (userId: number, thousandsValue: string) => {
+  const updateParticipantAmount = useCallback((userId: number, thousandsValue: string) => {
     // Update the displayed thousands value
     const newThousands = { ...participantThousands };
     newThousands[userId] = thousandsValue;
@@ -211,7 +211,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
     if (equalSplit && thousandsValue) {
       setEqualSplit(false);
     }
-  };
+  }, [participantThousands, participantAmounts, equalSplit]);
   
   // Toggle equal split
   const toggleEqualSplit = () => {

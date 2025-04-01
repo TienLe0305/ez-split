@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt, CalendarIcon } from 'lucide-react';
@@ -98,14 +98,14 @@ export default function NewExpensePage() {
   }, [payerId, users, selectedParticipants]);
   
   // Update amount when thousands input changes
-  const handleAmountChange = (newAmount: number) => {
+  const handleAmountChange = useCallback((newAmount: number) => {
     setAmount(newAmount.toString());
-  };
+  }, []);
   
   // Select an expense type from quick options
-  const handleExpenseTypeSelect = (expenseName: string) => {
+  const handleExpenseTypeSelect = useCallback((expenseName: string) => {
     setName(expenseName);
-  };
+  }, []);
   
   // Calculate equal share when amount or participants change
   useEffect(() => {
@@ -138,7 +138,7 @@ export default function NewExpensePage() {
   }, [amount, selectedParticipants, equalSplit]);
   
   // Toggle participant selection
-  const toggleParticipant = (userId: number) => {
+  const toggleParticipant = useCallback((userId: number) => {
     const newSelected = { ...selectedParticipants };
     newSelected[userId] = !newSelected[userId];
     setSelectedParticipants(newSelected);
@@ -152,10 +152,10 @@ export default function NewExpensePage() {
       setParticipantAmounts(newAmounts);
       setParticipantThousands(newThousands);
     }
-  };
+  }, [selectedParticipants, participantAmounts, participantThousands]);
   
   // Update participant amount
-  const updateParticipantAmount = (userId: number, thousandsValue: string) => {
+  const updateParticipantAmount = useCallback((userId: number, thousandsValue: string) => {
     // Update the displayed thousands value
     const newThousands = { ...participantThousands };
     newThousands[userId] = thousandsValue;
@@ -171,7 +171,7 @@ export default function NewExpensePage() {
     if (equalSplit && thousandsValue) {
       setEqualSplit(false);
     }
-  };
+  }, [participantThousands, participantAmounts, equalSplit]);
   
   // Toggle equal split
   const toggleEqualSplit = () => {

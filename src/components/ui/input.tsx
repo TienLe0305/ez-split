@@ -9,7 +9,7 @@ export interface InputProps
   isDense?: boolean;
 }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+const Input = React.memo(React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, isDense, ...props }, ref) => {
     return (
       <input
@@ -29,7 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       />
     )
   }
-)
+))
 Input.displayName = "Input"
 
 export { Input }

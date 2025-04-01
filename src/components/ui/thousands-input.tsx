@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Input, InputProps } from '@/components/ui/input';
 import { thousandsToAmount, formatNumberWithCommas } from '@/lib/utils';
 
@@ -8,14 +8,15 @@ interface ThousandsInputProps extends Omit<InputProps, 'onChange' | 'value'> {
   onAmountChange?: (amount: number) => void;
 }
 
-export function ThousandsInput({
+export const ThousandsInput = React.memo(function ThousandsInput({
   value,
   onChange,
   onAmountChange,
   className,
   ...props
 }: ThousandsInputProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Extract only numbers
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
     
     // Update display value (in thousands)
@@ -26,10 +27,10 @@ export function ThousandsInput({
       const actualAmount = thousandsToAmount(rawValue);
       onAmountChange(actualAmount);
     }
-  };
+  }, [onChange, onAmountChange]);
 
   // Format with commas for display
-  const displayValue = formatNumberWithCommas(value);
+  const displayValue = React.useMemo(() => formatNumberWithCommas(value), [value]);
 
   return (
     <div className="relative flex items-center w-full">
@@ -47,4 +48,4 @@ export function ThousandsInput({
       </div>
     </div>
   );
-} 
+}); 

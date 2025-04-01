@@ -9,7 +9,12 @@ import {
   Trash, 
   Edit, 
   SplitSquareVertical,
-  RefreshCw
+  RefreshCw,
+  DollarSign,
+  Calendar,
+  Users,
+  Wallet,
+  Check
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useExpense, useDeleteExpense } from '@/lib/query/hooks';
@@ -123,10 +128,23 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
               <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isRefetching ? 'animate-spin' : ''}`} />
             </Button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">{expense.name}</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            {formatCurrency(expense.amount)} • Ngày {formatDate(expense.date || expense.created_at)}
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">{expense.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center bg-primary/10 text-primary rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1">
+              <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+              <span className="font-medium text-sm sm:text-base">{formatCurrency(expense.amount)}</span>
+            </div>
+            
+            <div className="flex items-center bg-muted/50 rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 text-blue-500" />
+              <span className="font-medium text-sm sm:text-base">{expense.participants?.length || 0} người tham gia</span>
+            </div>
+            
+            <div className="flex items-center bg-muted/50 rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1">
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 text-orange-500" />
+              <span className="font-medium text-sm sm:text-base">{formatDate(expense.date || expense.created_at)}</span>
+            </div>
+          </div>
         </div>
         
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
@@ -182,32 +200,66 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div>
-              <div className="font-medium mb-2 text-primary text-sm sm:text-base">Người thanh toán</div>
-              <div className="flex items-center p-2 sm:p-3 bg-primary/5 rounded-lg">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center mr-2 sm:mr-3 font-medium text-sm sm:text-base">
-                  {expense.payer?.name.charAt(0)}
-                </div>
-                <div>
-                  <div className="font-medium text-sm sm:text-base">{expense.payer?.name}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Đã thanh toán trước</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="order-1">
+              <div className="flex items-center mb-3 text-primary">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
+                <h3 className="font-medium text-sm sm:text-base">Người thanh toán</h3>
+              </div>
+              
+              <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 sm:p-5 border border-primary/10 shadow-sm hover:shadow transition-all duration-200">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="relative">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center font-medium text-lg sm:text-xl">
+                        {expense.payer?.name.charAt(0)}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 shadow-md">
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="ml-4">
+                    <div className="font-semibold text-base sm:text-lg">{expense.payer?.name}</div>
+                    <div className="text-xs sm:text-sm mt-1 flex items-center text-green-600">
+                      <DollarSign className="h-3.5 w-3.5 mr-1" />
+                      <span>Đã thanh toán {formatCurrency(expense.amount)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div>
-              <div className="font-medium mb-2 text-primary text-sm sm:text-base">Người tham gia</div>
-              <div className="max-h-[200px] overflow-y-auto pr-2 space-y-2">
-                {expense.participants?.map((participant, index) => (
-                  <div key={`participant-${participant.user_id}-${index}`} className="flex items-center p-2 border-b last:border-0">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-2 font-medium text-xs sm:text-sm">
-                      {participant.user?.name.charAt(0)}
+            <div className="order-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center text-primary">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
+                  <h3 className="font-medium text-sm sm:text-base">Người tham gia</h3>
+                </div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  {expense.participants?.length || 0} người
+                </div>
+              </div>
+              
+              <div className="bg-muted/20 rounded-xl p-3 sm:p-4 border shadow-sm">
+                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
+                  {expense.participants?.map((participant, index) => (
+                    <div 
+                      key={`participant-${participant.user_id}-${index}`} 
+                      className="flex items-center bg-background p-2.5 sm:p-3 rounded-lg border border-muted hover:border-primary/20 hover:shadow-sm transition-all duration-200"
+                    >
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-medium text-sm sm:text-base">
+                        {participant.user?.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm sm:text-base truncate">{participant.user?.name}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">Phần chi tiêu</div>
+                      </div>
+                      <div className="flex-shrink-0 font-semibold text-sm sm:text-base">{formatCurrency(participant.amount)}</div>
                     </div>
-                    <span className="flex-1 text-sm sm:text-base">{participant.user?.name}</span>
-                    <span className="font-medium text-sm sm:text-base">{formatCurrency(participant.amount)}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
