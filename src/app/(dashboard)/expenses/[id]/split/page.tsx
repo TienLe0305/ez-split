@@ -318,23 +318,23 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
             <CardTitle className="text-lg sm:text-xl flex items-center justify-between">
               <span className="truncate">Thông tin chi tiêu</span>
             </CardTitle>
-            <CardDescription className="mt-2">
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 py-1">
-                <div className="flex items-center bg-primary/10 text-primary rounded-full px-3 py-1">
+            <CardDescription>
+              <span className="flex flex-wrap items-center gap-3 sm:gap-4 py-1">
+                <span className="flex items-center bg-primary/10 text-primary rounded-full px-3 py-1">
                   <DollarSign className="h-4 w-4 mr-1.5" />
                   <span className="font-medium">{formatCurrency(expense.amount)}</span>
-                </div>
+                </span>
                 
-                <div className="flex items-center bg-muted/50 rounded-full px-3 py-1">
+                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
                   <Users className="h-4 w-4 mr-1.5 text-blue-500" />
                   <span className="font-medium">{expense.participants?.length} người tham gia</span>
-                </div>
+                </span>
                 
-                <div className="flex items-center bg-muted/50 rounded-full px-3 py-1">
+                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
                   <Calendar className="h-4 w-4 mr-1.5 text-orange-500" />
                   <span className="font-medium">{formatDate(expense.date || expense.created_at || '')}</span>
-                </div>
-              </div>
+                </span>
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
