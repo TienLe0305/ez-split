@@ -1,322 +1,459 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { PageTransition, StaggerContainer, StaggerItem, SlideUp } from "@/components/ui/animation";
-import { LucideSave, LucideX, LucideDollarSign, LucideEdit, LucideUsers, LucidePieChart } from "lucide-react";
-
-// Define the form schema
-const formSchema = z.object({
-  name: z.string().min(3, { message: "Tên chi tiêu phải có ít nhất 3 ký tự" }),
-  amount: z.coerce.number().positive({ message: "Số tiền phải lớn hơn 0" }),
-  payer: z.string(),
-  participants: z.array(z.string()).min(1, { message: "Phải có ít nhất 1 người tham gia" }),
-  splitEvenly: z.boolean().default(true),
-  individualAmounts: z.record(z.number()).optional(),
-});
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt } from 'lucide-react';
+import { getUsers, createExpense, User, Participant } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 export default function NewExpensePage() {
   const router = useRouter();
-  const [users] = useState([
-    "Phương", "Thắng", "Hoàng", "Giang", "Đức", "Duyệt", "Tâm"
-  ]);
-
-  // Initialize form with default values
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      amount: 0,
-      payer: users[0],
-      participants: [] as string[],
-      splitEvenly: true,
-      individualAmounts: {},
-    },
-  });
-
-  const { watch, setValue } = form;
-  const participants = watch("participants");
-  const amount = watch("amount");
-  const splitEvenly = watch("splitEvenly");
-  const individualAmounts = watch("individualAmounts") || {};
-
-  // Update individual amounts when participants or splitEvenly changes
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Form state
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [payerId, setPayerId] = useState('');
+  const [selectedParticipants, setSelectedParticipants] = useState<{ [key: number]: boolean }>({});
+  const [participantAmounts, setParticipantAmounts] = useState<{ [key: number]: string }>({});
+  const [equalSplit, setEqualSplit] = useState(true);
+  
   useEffect(() => {
-    if (splitEvenly && participants.length > 0) {
-      const evenAmount = amount / participants.length;
-      const newIndividualAmounts = {} as Record<string, number>;
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getUsers();
+        setUsers(data);
+        
+        // Initialize selected participants with all users checked
+        const initialParticipants: { [key: number]: boolean } = {};
+        const initialAmounts: { [key: number]: string } = {};
+        
+        data.forEach(user => {
+          initialParticipants[user.id] = true;
+          initialAmounts[user.id] = '';
+        });
+        
+        setSelectedParticipants(initialParticipants);
+        setParticipantAmounts(initialAmounts);
+      } catch (err) {
+        setError('Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, []);
+  
+  // Calculate equal share when amount or participants change
+  useEffect(() => {
+    if (equalSplit && amount) {
+      const selectedCount = Object.values(selectedParticipants).filter(Boolean).length;
       
-      participants.forEach(participant => {
-        newIndividualAmounts[participant] = evenAmount;
+      if (selectedCount > 0) {
+        const amountValue = parseFloat(amount);
+        const equalShare = (amountValue / selectedCount).toFixed(2);
+        
+        const newAmounts = { ...participantAmounts };
+        
+        Object.keys(selectedParticipants).forEach(userIdStr => {
+          const userId = parseInt(userIdStr);
+          if (selectedParticipants[userId]) {
+            newAmounts[userId] = equalShare;
+          } else {
+            newAmounts[userId] = '';
+          }
+        });
+        
+        setParticipantAmounts(newAmounts);
+      }
+    }
+  }, [amount, selectedParticipants, equalSplit]);
+  
+  // Toggle participant selection
+  const toggleParticipant = (userId: number) => {
+    const newSelected = { ...selectedParticipants };
+    newSelected[userId] = !newSelected[userId];
+    setSelectedParticipants(newSelected);
+    
+    // If unselected, clear amount
+    if (!newSelected[userId]) {
+      const newAmounts = { ...participantAmounts };
+      newAmounts[userId] = '';
+      setParticipantAmounts(newAmounts);
+    }
+  };
+  
+  // Update participant amount
+  const updateParticipantAmount = (userId: number, newAmount: string) => {
+    const newAmounts = { ...participantAmounts };
+    newAmounts[userId] = newAmount;
+    setParticipantAmounts(newAmounts);
+    
+    // Disable equal split if manually editing amounts
+    if (equalSplit && newAmount) {
+      setEqualSplit(false);
+    }
+  };
+  
+  // Toggle equal split
+  const toggleEqualSplit = () => {
+    setEqualSplit(!equalSplit);
+  };
+  
+  // Validate form before submission
+  const validateForm = () => {
+    if (!name.trim()) {
+      setError('Vui lòng nhập tên chi tiêu');
+      return false;
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Vui lòng nhập số tiền hợp lệ');
+      return false;
+    }
+    
+    if (!payerId) {
+      setError('Vui lòng chọn người trả tiền');
+      return false;
+    }
+    
+    const participantCount = Object.values(selectedParticipants).filter(Boolean).length;
+    if (participantCount === 0) {
+      setError('Vui lòng chọn ít nhất một người tham gia');
+      return false;
+    }
+    
+    // Check if all participant amounts are valid and sum is correct
+    let totalParticipantAmount = 0;
+    let allValid = true;
+    
+    for (const userId in selectedParticipants) {
+      if (selectedParticipants[parseInt(userId)]) {
+        const participantAmount = participantAmounts[parseInt(userId)];
+        
+        if (!participantAmount || isNaN(parseFloat(participantAmount))) {
+          setError(`Vui lòng nhập số tiền cho tất cả người tham gia`);
+          allValid = false;
+          break;
+        }
+        
+        totalParticipantAmount += parseFloat(participantAmount);
+      }
+    }
+    
+    if (!allValid) return false;
+    
+    // Allow small rounding errors (within 1 VND)
+    const amountValue = parseFloat(amount);
+    if (Math.abs(totalParticipantAmount - amountValue) > 1) {
+      setError(`Tổng số tiền phân chia (${formatCurrency(totalParticipantAmount)}) phải bằng tổng chi phí (${formatCurrency(amountValue)})`);
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      
+      // Prepare participants data
+      const participants: Participant[] = [];
+      
+      for (const userId in selectedParticipants) {
+        if (selectedParticipants[parseInt(userId)]) {
+          participants.push({
+            user_id: parseInt(userId),
+            amount: parseFloat(participantAmounts[parseInt(userId)]),
+            expense_id: 0 // This will be set by the backend
+          });
+        }
+      }
+      
+      // Create expense
+      await createExpense({
+        name,
+        amount: parseFloat(amount),
+        payer_id: parseInt(payerId),
+        participants
       });
       
-      setValue("individualAmounts", newIndividualAmounts);
+      // Redirect back to expenses list
+      router.push('/expenses');
+      
+    } catch (err) {
+      console.error(err);
+      setError('Có lỗi xảy ra khi lưu chi tiêu. Vui lòng thử lại sau.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [participants, amount, splitEvenly, setValue]);
-
-  // Calculate total of individual amounts
-  const totalIndividualAmount = Object.values(individualAmounts).reduce((sum, amount) => sum + amount, 0);
-  const amountDifference = amount - totalIndividualAmount;
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Here we would post the expense to the API
-    console.log(values);
+  };
+  
+  // Calculate total amount of selected participants
+  const calculateTotalParticipantAmount = () => {
+    let total = 0;
     
-    // Redirect to expenses list
-    router.push("/expenses");
-  }
-
+    for (const userId in selectedParticipants) {
+      if (selectedParticipants[parseInt(userId)]) {
+        const amount = participantAmounts[parseInt(userId)];
+        if (amount && !isNaN(parseFloat(amount))) {
+          total += parseFloat(amount);
+        }
+      }
+    }
+    
+    return total;
+  };
+  
+  const totalParticipantAmount = calculateTotalParticipantAmount();
+  const amountValue = amount ? parseFloat(amount) : 0;
+  const difference = amountValue - totalParticipantAmount;
+  
+  // Calculate number of selected participants
+  const selectedParticipantCount = Object.values(selectedParticipants).filter(Boolean).length;
+  
   return (
-    <PageTransition>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent">
-              Thêm chi tiêu mới
-            </h1>
-            <p className="text-muted-foreground mt-1">Nhập thông tin chi tiêu để chia tiền</p>
-          </div>
-          <Link href="/expenses">
-            <Button variant="outline" className="flex items-center gap-1 hover:bg-primary/5 transition-colors">
-              <LucideX size={16} />
-              <span>Hủy</span>
-            </Button>
-          </Link>
+    <div className="container px-4 py-6 lg:px-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Thêm chi tiêu</h1>
+          <p className="text-muted-foreground mt-1">
+            Thêm khoản chi tiêu mới và phân chia cho các thành viên
+          </p>
         </div>
-
-        <SlideUp delay={0.1}>
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <div className="flex items-center gap-2 mb-1">
-                <LucideEdit className="text-primary" size={18} />
-                <CardTitle>Thông tin chi tiêu</CardTitle>
-              </div>
-              <CardDescription>Nhập thông tin chi tiêu để chia tiền</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <StaggerContainer className="space-y-6">
-                    <StaggerItem>
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2">
-                              <LucideEdit size={14} />
-                              <span>Tên chi tiêu</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Ăn trưa, cà phê, ..." 
-                                {...field} 
-                                className="focus-visible:ring-primary transition-shadow"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </StaggerItem>
-
-                    <StaggerItem>
-                      <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2">
-                              <LucideDollarSign size={14} />
-                              <span>Số tiền</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="100000"
-                                {...field}
-                                onChange={e => field.onChange(e.target.valueAsNumber || 0)}
-                                className="focus-visible:ring-primary transition-shadow"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </StaggerItem>
-
-                    <StaggerItem>
-                      <FormField
-                        control={form.control}
-                        name="payer"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2">
-                              <LucideUsers size={14} />
-                              <span>Người trả</span>
-                            </FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="focus:ring-primary">
-                                  <SelectValue placeholder="Chọn người trả" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {users.map(user => (
-                                  <SelectItem key={user} value={user}>
-                                    {user}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </StaggerItem>
-
-                    <StaggerItem>
-                      <FormField
-                        control={form.control}
-                        name="participants"
-                        render={() => (
-                          <FormItem>
-                            <div className="mb-4">
-                              <FormLabel className="flex items-center gap-2">
-                                <LucideUsers size={14} />
-                                <span>Người tham gia</span>
-                              </FormLabel>
-                              <FormDescription>
-                                Chọn những người tham gia vào chi tiêu này
-                              </FormDescription>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-secondary/10 p-4 rounded-lg border">
-                              {users.map((user) => (
-                                <FormField
-                                  key={user}
-                                  control={form.control}
-                                  name="participants"
-                                  render={({ field }) => {
-                                    return (
-                                      <FormItem
-                                        key={user}
-                                        className="flex flex-row items-start space-x-3 space-y-0"
-                                      >
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={field.value?.includes(user)}
-                                            onCheckedChange={(checked) => {
-                                              return checked
-                                                ? field.onChange([...field.value, user])
-                                                : field.onChange(
-                                                    field.value?.filter(
-                                                      (value) => value !== user
-                                                    )
-                                                  )
-                                            }}
-                                          />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">
-                                          {user}
-                                        </FormLabel>
-                                      </FormItem>
-                                    )
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </StaggerItem>
-
-                    <StaggerItem>
-                      <FormField
-                        control={form.control}
-                        name="splitEvenly"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-6 bg-secondary/10">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base flex items-center gap-2">
-                                <LucidePieChart size={14} />
-                                <span>Chia đều</span>
-                              </FormLabel>
-                              <FormDescription>
-                                Chia đều số tiền cho tất cả người tham gia
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </StaggerItem>
-                  </StaggerContainer>
-
-                  {!splitEvenly && participants.length > 0 && (
-                    <div className="space-y-4 p-4 border rounded-lg bg-secondary/10 animate-fadeIn">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Chi tiêu theo từng người:</span>
-                        <span className={amountDifference !== 0 ? "text-red-500 font-bold" : "text-green-500"}>
-                          {amountDifference !== 0 
-                            ? `Chênh lệch: ${amountDifference.toLocaleString('vi-VN')} đ` 
-                            : "Hợp lệ"}
-                        </span>
-                      </div>
-                      
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {participants.map(participant => (
-                          <div key={participant} className="flex items-center gap-3 bg-background p-3 rounded-md border">
-                            <span className="w-24 font-medium">{participant}</span>
-                            <Input
-                              type="number"
-                              value={individualAmounts[participant] || 0}
-                              onChange={(e) => {
-                                const newAmount = e.target.valueAsNumber || 0;
-                                const newAmounts = { ...individualAmounts, [participant]: newAmount };
-                                setValue("individualAmounts", newAmounts);
-                              }}
-                              className="focus-visible:ring-primary transition-shadow"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-2">
-                    <Button 
-                      type="submit" 
-                      disabled={!splitEvenly && amountDifference !== 0}
-                      className="bg-gradient-to-r from-primary to-indigo-400 hover:from-primary/90 hover:to-indigo-400/90 shadow hover:shadow-md transition-all flex items-center gap-1"
-                    >
-                      <LucideSave size={16} />
-                      <span>Lưu chi tiêu</span>
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </SlideUp>
+        <Link href="/expenses">
+          <Button variant="outline" size="sm" className="h-9 gap-1">
+            <ArrowLeft className="h-4 w-4" /> Quay lại
+          </Button>
+        </Link>
       </div>
-    </PageTransition>
+
+      <div className="mx-auto">
+        <form onSubmit={handleSubmit}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-primary" />
+                Thông tin chi tiêu
+              </CardTitle>
+              <CardDescription>
+                Nhập thông tin chi tiết cho khoản chi tiêu mới
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Lỗi</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="grid gap-5">
+                <div className="grid gap-3">
+                  <Label htmlFor="name" className="flex items-center gap-1.5">
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                    Tên chi tiêu
+                  </Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={isLoading || isSubmitting}
+                    placeholder="Ví dụ: Ăn tối, Đi chơi, Mua sắm..."
+                    className="h-10"
+                  />
+                </div>
+                
+                <div className="grid gap-3">
+                  <Label htmlFor="amount" className="flex items-center gap-1.5">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    Số tiền (VND)
+                  </Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    disabled={isLoading || isSubmitting}
+                    placeholder="Nhập tổng số tiền chi tiêu"
+                    className="h-10"
+                  />
+                </div>
+                
+                <div className="grid gap-3">
+                  <Label htmlFor="payer" className="flex items-center gap-1.5">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    Người trả tiền
+                  </Label>
+                  <Select
+                    value={payerId}
+                    onValueChange={(value) => setPayerId(value)}
+                    disabled={isLoading || isSubmitting}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Chọn người trả tiền" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map(user => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      Người tham gia
+                    </Label>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="equal-split"
+                        checked={equalSplit}
+                        onCheckedChange={toggleEqualSplit}
+                        disabled={isLoading || isSubmitting}
+                      />
+                      <label
+                        htmlFor="equal-split"
+                        className="text-sm font-medium leading-none"
+                      >
+                        Chia đều
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <Card className="border-dashed">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm font-medium">
+                          {selectedParticipantCount} người tham gia
+                        </div>
+                        {amount && (
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">
+                              Tổng: {formatCurrency(totalParticipantAmount)}
+                            </div>
+                            {Math.abs(difference) > 0.01 && (
+                              <div className={difference > 0 ? 'text-xs text-red-500' : difference < 0 ? 'text-xs text-orange-500' : ''}>
+                                {difference > 0 ? 'Thiếu' : 'Thừa'}: {formatCurrency(Math.abs(difference))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="p-4 pt-0">
+                      {isLoading ? (
+                        <div className="flex justify-center py-4">
+                          <div className="h-8 w-8 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
+                        </div>
+                      ) : (
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="participants">
+                            <AccordionTrigger className="py-2">
+                              <span className="text-sm font-medium">{equalSplit ? 'Chia đều cho mọi người' : 'Chia theo số tiền tùy chỉnh'}</span>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-3 pt-2">
+                                {users.map(user => (
+                                  <div key={user.id} className="flex items-center gap-3 p-2 rounded-md border bg-background">
+                                    <Checkbox
+                                      id={`user-${user.id}`}
+                                      checked={selectedParticipants[user.id] || false}
+                                      onCheckedChange={() => toggleParticipant(user.id)}
+                                      disabled={isSubmitting}
+                                    />
+                                    <label
+                                      htmlFor={`user-${user.id}`}
+                                      className="flex-1 text-sm font-medium leading-none"
+                                    >
+                                      {user.name}
+                                    </label>
+                                    <Input
+                                      type="number"
+                                      value={participantAmounts[user.id] || ''}
+                                      onChange={(e) => updateParticipantAmount(user.id, e.target.value)}
+                                      disabled={!selectedParticipants[user.id] || equalSplit || isSubmitting}
+                                      placeholder="Số tiền"
+                                      className="w-32 h-8 text-sm"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+            
+            <CardFooter className="flex justify-between border-t p-6">
+              <Link href="/expenses">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSubmitting}
+                >
+                  Hủy bỏ
+                </Button>
+              </Link>
+              <Button
+                type="submit"
+                disabled={isLoading || isSubmitting}
+                className="gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 rounded-full border-2 border-background/40 border-t-background animate-spin"></div>
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <Split className="h-4 w-4" />
+                    <span>Lưu chi tiêu</span>
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </div>
+    </div>
   );
 } 

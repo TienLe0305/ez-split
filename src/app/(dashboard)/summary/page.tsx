@@ -1,191 +1,379 @@
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PageTransition, FadeIn, SlideUp } from "@/components/ui/animation";
-import { LucideListTodo, LucideArrowRight, LucideUsers, LucideCreditCard, LucideReceiptText } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { ArrowRight, RefreshCw, TrendingDown, TrendingUp, Wallet2, UserRound, DollarSign, ArrowRightLeft, Receipt, CheckCircle } from 'lucide-react';
+import { getSummary, UserSummary, Transaction, getExpensesTransactions, TransactionsByExpense } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Link from 'next/link';
 
 export default function SummaryPage() {
-  // Mock data - would be fetched from API in a real implementation
-  const personalSummary = [
-    { name: "Phương", paid: 1500000, owes: 978571, balance: 521429 },
-    { name: "Thắng", paid: 0, owes: 842857, balance: -842857 },
-    { name: "Hoàng", paid: 2500000, owes: 1271429, balance: 1228571 },
-    { name: "Giang", paid: 0, owes: 1271429, balance: -1271429 },
-    { name: "Đức", paid: 480000, owes: 842857, balance: -362857 },
-    { name: "Duyệt", paid: 0, owes: 842857, balance: -842857 },
-    { name: "Tâm", paid: 0, owes: 842857, balance: -842857 }
-  ];
+  const [userSummary, setUserSummary] = useState<UserSummary[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expensesTransactions, setExpensesTransactions] = useState<TransactionsByExpense[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('summary');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const transactions = [
-    { from: "Thắng", to: "Phương", amount: 400000 },
-    { from: "Giang", to: "Phương", amount: 121429 },
-    { from: "Giang", to: "Hoàng", amount: 1150000 },
-    { from: "Đức", to: "Hoàng", amount: 78571 },
-    { from: "Duyệt", to: "Hoàng", amount: 842857 },
-    { from: "Tâm", to: "Phương", amount: 842857 }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Fetch all data in parallel
+        const [summaryData, expensesTransactionsData] = await Promise.all([
+          getSummary(),
+          getExpensesTransactions()
+        ]);
+        
+        setUserSummary(summaryData.userSummary);
+        setTransactions(summaryData.transactions);
+        setExpensesTransactions(expensesTransactionsData);
+      } catch (err) {
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    fetchData();
+  }, []);
+
+  const refreshSummary = async () => {
+    try {
+      setRefreshing(true);
+      
+      // Fetch all data in parallel
+      const [summaryData, expensesTransactionsData] = await Promise.all([
+        getSummary(),
+        getExpensesTransactions()
+      ]);
+      
+      setUserSummary(summaryData.userSummary);
+      setTransactions(summaryData.transactions);
+      setExpensesTransactions(expensesTransactionsData);
+      setError(null);
+    } catch (err) {
+      setError('Không thể cập nhật dữ liệu. Vui lòng thử lại sau.');
+      console.error(err);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // Calculate total numbers for summary
-  const totalPaid = personalSummary.reduce((sum, person) => sum + person.paid, 0);
-  const peopleWithDebt = personalSummary.filter(person => person.balance < 0).length;
-  const peopleWithCredit = personalSummary.filter(person => person.balance > 0).length;
+  // Helper function to determine balance status icon and color
+  const getBalanceStatus = (balance: number) => {
+    if (balance > 0) {
+      return { 
+        icon: <TrendingUp className="h-4 w-4" />, 
+        color: 'text-green-600 dark:text-green-400',
+        bgColor: 'bg-green-50 dark:bg-green-950/50',
+        borderColor: 'border-green-100 dark:border-green-900'
+      };
+    } else if (balance < 0) {
+      return { 
+        icon: <TrendingDown className="h-4 w-4" />, 
+        color: 'text-red-600 dark:text-red-400',
+        bgColor: 'bg-red-50 dark:bg-red-950/50',
+        borderColor: 'border-red-100 dark:border-red-900'
+      };
+    }
+    return { 
+      icon: <ArrowRightLeft className="h-4 w-4" />, 
+      color: 'text-gray-600 dark:text-gray-400', 
+      bgColor: 'bg-gray-50 dark:bg-gray-900',
+      borderColor: 'border-gray-100 dark:border-gray-800'
+    };
+  };
+
+  // Format date from ISO string
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date);
+  };
+
+  // Get total amount of all transactions
+  const getTotalTransactions = () => {
+    return transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  };
 
   return (
-    <PageTransition>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent">
-              Kết quả chia tiền
-            </h1>
-            <p className="text-muted-foreground mt-1">Xem tổng kết và các giao dịch cần thực hiện</p>
-          </div>
-          <Link href="/expenses">
-            <Button variant="outline" className="flex items-center gap-1 hover:bg-primary/5 transition-colors">
-              <LucideListTodo size={16} />
-              <span>Quản lý chi tiêu</span>
-            </Button>
-          </Link>
+    <div className="container px-4 py-6 lg:px-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Kết quả chia tiền</h1>
+          <p className="text-muted-foreground mt-1">
+            Tổng kết chi tiêu và các giao dịch cần thực hiện
+          </p>
         </div>
+        <Button 
+          size="sm" 
+          onClick={refreshSummary}
+          disabled={isLoading || refreshing}
+          className="h-9 gap-1"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Cập nhật
+        </Button>
+      </div>
 
-        <FadeIn delay={0.1}>
-          <div className="grid gap-6 md:grid-cols-3 mb-6">
-            <SlideUp delay={0.2} className="bg-primary/5 rounded-lg p-4 border-2 border-primary/10">
-              <div className="flex flex-col h-full">
-                <div className="mb-2 text-primary">
-                  <LucideCreditCard size={22} />
-                </div>
-                <h3 className="text-xl font-medium mb-1">Tổng chi tiêu</h3>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(totalPaid)}</p>
-                <p className="text-sm text-muted-foreground mt-auto pt-2">Tổng số tiền đã chi tiêu</p>
-              </div>
-            </SlideUp>
-            
-            <SlideUp delay={0.3} className="bg-primary/5 rounded-lg p-4 border-2 border-primary/10">
-              <div className="flex flex-col h-full">
-                <div className="mb-2 text-primary">
-                  <LucideUsers size={22} />
-                </div>
-                <h3 className="text-xl font-medium mb-1">Người nợ tiền</h3>
-                <p className="text-2xl font-bold text-red-500">{peopleWithDebt} người</p>
-                <p className="text-sm text-muted-foreground mt-auto pt-2">Số người cần thanh toán</p>
-              </div>
-            </SlideUp>
-            
-            <SlideUp delay={0.4} className="bg-primary/5 rounded-lg p-4 border-2 border-primary/10">
-              <div className="flex flex-col h-full">
-                <div className="mb-2 text-primary">
-                  <LucideReceiptText size={22} />
-                </div>
-                <h3 className="text-xl font-medium mb-1">Người được nhận</h3>
-                <p className="text-2xl font-bold text-green-500">{peopleWithCredit} người</p>
-                <p className="text-sm text-muted-foreground mt-auto pt-2">Số người cần được thanh toán</p>
-              </div>
-            </SlideUp>
-          </div>
-        </FadeIn>
-
-        <SlideUp delay={0.5}>
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <LucideUsers className="text-primary" size={18} />
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-16 border rounded-lg bg-white dark:bg-gray-950">
+          <div className="h-10 w-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4"></div>
+          <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-destructive/10 p-6 rounded-lg text-destructive text-center border border-destructive/20">
+          <p className="font-medium mb-2">{error}</p>
+          <Button variant="outline" size="sm" onClick={refreshSummary} disabled={refreshing}>
+            Thử lại
+          </Button>
+        </div>
+      ) : (
+        <>
+          <Tabs defaultValue="summary" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid grid-cols-2 w-full max-w-lg mx-auto">
+              <TabsTrigger value="summary" className="flex items-center gap-2">
+                <UserRound className="h-4 w-4" />
                 <span>Tổng kết cá nhân</span>
-              </CardTitle>
-              <CardDescription>Số tiền mỗi người đã chi trả và nợ</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Người dùng</TableHead>
-                    <TableHead className="text-right">Đã trả</TableHead>
-                    <TableHead className="text-right">Cần trả</TableHead>
-                    <TableHead className="text-right">Cân đối</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {personalSummary.map((person, index) => (
-                    <TableRow 
-                      key={person.name}
-                      className="hover:bg-primary/5 transition-colors"
-                      style={{ 
-                        animation: `fadeIn 0.5s ease forwards`,
-                        animationDelay: `${0.1 + index * 0.05}s`,
-                        opacity: 0
-                      }}
-                    >
-                      <TableCell className="font-medium">{person.name}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(person.paid)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(person.owes)}</TableCell>
-                      <TableCell className={`text-right font-medium ${person.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {person.balance >= 0 ? '+' : ''}{formatCurrency(person.balance)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </SlideUp>
-
-        <SlideUp delay={0.7}>
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <LucideCreditCard className="text-primary" size={18} />
-                <span>Các giao dịch cần thực hiện</span>
-              </CardTitle>
-              <CardDescription>Những người cần trả tiền cho người khác</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {transactions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Không có giao dịch nào cần thực hiện</p>
-              ) : (
-                <div className="space-y-2">
-                  {transactions.map((transaction, index) => (
-                    <div 
-                      key={index}
-                      className="flex justify-between items-center border-b py-4 hover:bg-primary/5 transition-colors px-2 rounded-sm"
-                      style={{ 
-                        animation: `fadeIn 0.5s ease forwards`,
-                        animationDelay: `${0.1 + index * 0.05}s`,
-                        opacity: 0
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-red-100 text-red-600 w-10 h-10 flex items-center justify-center font-bold">
-                          {transaction.from[0]}
+              </TabsTrigger>
+              <TabsTrigger value="byExpense" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                <span>Theo chi tiêu</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="summary" className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {userSummary.map(user => {
+                  const balanceStatus = getBalanceStatus(user.balance);
+                  return (
+                    <Card key={user.id} className="overflow-hidden transition-all hover:shadow-md rounded-xl">
+                      <CardHeader className="pb-2 relative">
+                        <div className="absolute top-3 right-3">
+                          <div className={`${balanceStatus.bgColor} h-7 w-7 rounded-full flex items-center justify-center`}>
+                            {balanceStatus.icon}
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{transaction.from}</span>
-                          <span className="text-sm text-muted-foreground">Người trả tiền</span>
+                        <CardTitle className="flex items-center gap-3 text-lg">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
+                            <span className="text-lg font-semibold">{user.name.charAt(0)}</span>
+                          </div>
+                          {user.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                              <Wallet2 className="h-3.5 w-3.5" /> Đã chi
+                            </span>
+                            <span className="font-medium">{formatCurrency(user.paid)}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                              <DollarSign className="h-3.5 w-3.5" /> Đã tiêu
+                            </span>
+                            <span className="font-medium">{formatCurrency(user.spent)}</span>
+                          </div>
                         </div>
-                        <LucideArrowRight className="mx-2 text-muted-foreground" />
-                        <div className="rounded-full bg-green-100 text-green-600 w-10 h-10 flex items-center justify-center font-bold">
-                          {transaction.to[0]}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{transaction.to}</span>
-                          <span className="text-sm text-muted-foreground">Người nhận tiền</span>
+                      </CardContent>
+                      <div className={`p-3 mt-2 ${balanceStatus.bgColor} border-t ${balanceStatus.borderColor}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Cân đối</span>
+                          <span className={`font-semibold flex items-center gap-1 ${balanceStatus.color}`}>
+                            {formatCurrency(user.balance)}
+                          </span>
                         </div>
                       </div>
-                      <div className="font-bold text-primary text-lg">
-                        {formatCurrency(transaction.amount)}
+                    </Card>
+                  );
+                })}
+              </div>
+              
+              {/* Summary overview */}
+              <Card className="mt-6 rounded-xl border-blue-100 dark:border-blue-900 overflow-hidden">
+                <div className="border-l-4 border-blue-500 dark:border-blue-600 pl-4 py-2 ml-6 mt-6">
+                  <CardTitle>Tổng kết giao dịch</CardTitle>
+                  <CardDescription>
+                    Tổng quan về các giao dịch cần thực hiện
+                  </CardDescription>
+                </div>
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap gap-6 justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50">
+                        <ArrowRightLeft className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">
+                          Số giao dịch
+                        </div>
+                        <div className="text-2xl font-semibold">
+                          {transactions.length}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </SlideUp>
-      </div>
-    </PageTransition>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50">
+                        <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">
+                          Tổng tiền cần chuyển
+                        </div>
+                        <div className="text-2xl font-semibold">
+                          {formatCurrency(getTotalTransactions())}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-t border-blue-100 dark:border-blue-900 p-4">
+                  <Button 
+                    variant="default" 
+                    onClick={() => setActiveTab('byExpense')}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                  >
+                    Xem chi tiết các giao dịch
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="byExpense">
+              <div className="space-y-8">
+                {expensesTransactions.length === 0 ? (
+                  <div className="text-center py-10 flex flex-col items-center bg-white dark:bg-gray-950 rounded-xl border shadow-sm">
+                    <div className="p-4 rounded-full bg-blue-50 dark:bg-blue-950/50 mb-3">
+                      <Receipt className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-1">Không có chi tiêu nào cần thanh toán</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      Chưa có khoản chi tiêu nào được thêm hoặc tất cả đã được thanh toán.
+                    </p>
+                  </div>
+                ) : (
+                  expensesTransactions.map((expenseItem) => (
+                    <Card 
+                      key={expenseItem.expenseId} 
+                      className="rounded-xl overflow-hidden border-blue-100 dark:border-blue-900 hover:shadow-md transition-all duration-300"
+                    >
+                      <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-b border-blue-100 dark:border-blue-900">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-xl font-bold">
+                              {expenseItem.expenseName}
+                            </CardTitle>
+                            <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <span>Tổng: {formatCurrency(expenseItem.amount)}</span>
+                              <span className="text-gray-300 dark:text-gray-700">|</span>
+                              <span>Ngày: {formatDate(expenseItem.date)}</span>
+                              <span className="text-gray-300 dark:text-gray-700">|</span>
+                              <span>{expenseItem.transactions.length} giao dịch</span>
+                            </CardDescription>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            {expenseItem.allCompleted && (
+                              <div className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Đã thanh toán
+                              </div>
+                            )}
+                            <Link href={`/expenses/${expenseItem.expenseId}/split`}>
+                              <Button variant="outline" size="sm" className="border-blue-200 dark:border-blue-800">
+                                Xem chi tiết
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="pt-5">
+                        <div className="space-y-3">
+                          {expenseItem.transactions.map((transaction, idx) => (
+                            <div
+                              key={`${expenseItem.expenseId}-${idx}`}
+                              className={`overflow-hidden rounded-lg border ${
+                                transaction.payment_status?.paid
+                                  ? "bg-green-50 dark:bg-green-950/20 border-green-100 dark:border-green-900/50"
+                                  : "bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900"
+                              } transition-colors duration-200`}
+                            >
+                              <div className="p-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex shrink-0 items-center">
+                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                                      transaction.payment_status?.paid
+                                        ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                                        : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                    }`}>
+                                      <span className="text-sm font-medium">{transaction.fromName.charAt(0)}</span>
+                                    </div>
+                                    <div className="relative mx-1 w-5 text-primary">
+                                      <div className="absolute inset-0 flex items-center">
+                                        <div className="h-[2px] w-full bg-primary/20"></div>
+                                      </div>
+                                      <ArrowRight className="relative h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                                      <span className="text-sm font-medium">{transaction.toName.charAt(0)}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">
+                                      {transaction.fromName} → {transaction.toName}
+                                    </div>
+                                    
+                                    {transaction.payment_status?.paid ? (
+                                      <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Đã thanh toán
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        Chưa thanh toán
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="font-bold text-primary text-right">
+                                    {formatCurrency(transaction.amount)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                      
+                      <CardFooter className="bg-gray-50 dark:bg-gray-900/50 border-t py-3 flex justify-end">
+                        <p className="text-sm font-medium">
+                          Tổng cần thanh toán: <span className="text-primary font-bold ml-1">
+                            {formatCurrency(expenseItem.transactions.reduce((sum, t) => sum + t.amount, 0))}
+                          </span>
+                        </p>
+                      </CardFooter>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
+    </div>
   );
 } 
