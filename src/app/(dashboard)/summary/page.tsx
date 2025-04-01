@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowRight, RefreshCw, Wallet2, UserRound, DollarSign, Receipt, CheckCircle } from 'lucide-react';
-import { getSummary, UserSummary, getExpensesTransactions, TransactionsByExpense } from '@/lib/api';
+import { useState } from 'react';
+import { ArrowRight, Wallet2, UserRound, DollarSign, Receipt, CheckCircle, RefreshCw } from 'lucide-react';
+import { useSummary, useExpensesTransactions, queryKeys } from '@/lib/query/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
@@ -10,57 +10,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 
 export default function SummaryPage() {
-  const [userSummary, setUserSummary] = useState<UserSummary[]>([]);
-  const [expensesTransactions, setExpensesTransactions] = useState<TransactionsByExpense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('summary');
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch all data in parallel
-        const [summaryData, expensesTransactionsData] = await Promise.all([
-          getSummary(),
-          getExpensesTransactions()
-        ]);
-        
-        setUserSummary(summaryData.userSummary);
-        setExpensesTransactions(expensesTransactionsData);
-      } catch (err) {
-        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const refreshSummary = async () => {
-    try {
-      setRefreshing(true);
-      
-      // Fetch all data in parallel
-      const [summaryData, expensesTransactionsData] = await Promise.all([
-        getSummary(),
-        getExpensesTransactions()
-      ]);
-      
-      setUserSummary(summaryData.userSummary);
-      setExpensesTransactions(expensesTransactionsData);
-      setError(null);
-    } catch (err) {
-      setError('Không thể cập nhật dữ liệu. Vui lòng thử lại sau.');
-      console.error(err);
-    } finally {
-      setRefreshing(false);
-    }
+  
+  const { 
+    data: summaryData, 
+    isLoading: isSummaryLoading, 
+    isError: isSummaryError,
+    refetch: refetchSummary 
+  } = useSummary({
+    queryKey: queryKeys.summary,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  });
+  
+  const {
+    data: expensesTransactionsData,
+    isLoading: isTransactionsLoading,
+    isError: isTransactionsError,
+    refetch: refetchTransactions
+  } = useExpensesTransactions({
+    queryKey: queryKeys.expensesTransactions,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  });
+  
+  const userSummary = summaryData?.userSummary || [];
+  const expensesTransactions = expensesTransactionsData || [];
+  
+  const isLoading = isSummaryLoading || isTransactionsLoading;
+  const isError = isSummaryError || isTransactionsError;
+  
+  const refreshData = async () => {
+    await Promise.all([refetchSummary(), refetchTransactions()]);
   };
   
   // Format date from ISO string
@@ -83,15 +62,6 @@ export default function SummaryPage() {
             Tổng kết chi tiêu và các giao dịch cần thực hiện
           </p>
         </div>
-        <Button 
-          size="sm" 
-          onClick={refreshSummary}
-          disabled={isLoading || refreshing}
-          className="h-9 gap-1 w-full sm:w-auto justify-center"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Cập nhật
-        </Button>
       </div>
 
       {isLoading ? (
@@ -99,10 +69,10 @@ export default function SummaryPage() {
           <div className="h-10 w-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4"></div>
           <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
         </div>
-      ) : error ? (
+      ) : isError ? (
         <div className="bg-destructive/10 p-6 rounded-lg text-destructive text-center border border-destructive/20">
-          <p className="font-medium mb-2">{error}</p>
-          <Button variant="outline" size="sm" onClick={refreshSummary} disabled={refreshing}>
+          <p className="font-medium mb-2">Không thể tải dữ liệu. Vui lòng thử lại sau.</p>
+          <Button variant="outline" size="sm" onClick={refreshData}>
             Thử lại
           </Button>
         </div>

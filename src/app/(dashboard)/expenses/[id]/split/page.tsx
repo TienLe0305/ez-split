@@ -27,6 +27,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useToast } from "@/components/ui/use-toast";
 
 // Format date from ISO string
 const formatDate = (dateString: string | null | undefined) => {
@@ -90,6 +91,7 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
   const [shareDialogOpen, setShareDialogOpen] = useState(isNewExpense);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [lastCopyTime, setLastCopyTime] = useState(0);
   
   // State for QR code refresh
   const [qrRefreshCounter, setQrRefreshCounter] = useState(0);
@@ -122,14 +124,32 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
     }
   }, [expense, id]);
   
+  const { toast } = useToast();
+  
   // Copy link to clipboard
   const copyToClipboard = async () => {
+    // Kiểm tra thời gian từ lần copy cuối cùng
+    const now = Date.now();
+    if (now - lastCopyTime < 2000) { // 2 giây
+      return;
+    }
+    
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
+      setLastCopyTime(now);
+      toast({
+        title: "Đã sao chép",
+        description: "Liên kết đã được sao chép vào bộ nhớ tạm",
+      });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy: ', err);
+      toast({
+        title: "Lỗi",
+        description: "Không thể sao chép liên kết",
+        variant: "destructive",
+      });
     }
   };
 
@@ -233,7 +253,7 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
     <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-5xl">
       {/* Share Dialog */}
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[90vw] sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Chi tiêu đã được tạo thành công</DialogTitle>
             <DialogDescription>
@@ -248,15 +268,22 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
               <p className="text-sm font-medium">Chia sẻ với mọi người để theo dõi chi tiêu</p>
             </div>
             <div className="mt-3 flex space-x-2">
-              <div className="flex-1 flex items-center border rounded-md overflow-hidden bg-muted/50">
+              <div 
+                className="flex-1 flex items-center border rounded-md overflow-hidden bg-muted/50 cursor-pointer" 
+                onClick={copyToClipboard}
+              >
                 <LinkIcon className="h-4 w-4 mx-2 text-muted-foreground" />
                 <input 
-                  className="flex-1 bg-transparent px-2 py-2 text-sm outline-none" 
+                  className="flex-1 bg-transparent px-2 py-2 text-sm outline-none cursor-pointer" 
                   value={shareUrl} 
                   readOnly
                 />
               </div>
-              <Button size="sm" onClick={copyToClipboard} className="gap-1.5">
+              <Button 
+                size="sm" 
+                onClick={copyToClipboard} 
+                className="gap-1.5 hidden sm:flex"
+              >
                 {copied ? (
                   <>
                     <Check className="h-4 w-4" />
@@ -310,101 +337,7 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
           Chi tiết thanh toán và chia tiền cho khoản chi tiêu này
         </p>
       </div>
-      
-      {/* Expense Summary Card */}
-      {expense && (
-        <Card className="mb-6 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="bg-muted/50 p-4 sm:p-6">
-            <CardTitle className="text-lg sm:text-xl flex items-center justify-between">
-              <span className="truncate">Thông tin chi tiêu</span>
-            </CardTitle>
-            <CardDescription>
-              <span className="flex flex-wrap items-center gap-3 sm:gap-4 py-1">
-                <span className="flex items-center bg-primary/10 text-primary rounded-full px-3 py-1">
-                  <DollarSign className="h-4 w-4 mr-1.5" />
-                  <span className="font-medium">{formatCurrency(expense.amount)}</span>
-                </span>
-                
-                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
-                  <Users className="h-4 w-4 mr-1.5 text-blue-500" />
-                  <span className="font-medium">{expense.participants?.length} người tham gia</span>
-                </span>
-                
-                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
-                  <Calendar className="h-4 w-4 mr-1.5 text-orange-500" />
-                  <span className="font-medium">{formatDate(expense.date || expense.created_at || '')}</span>
-                </span>
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-              <div className="order-1">
-                <div className="flex items-center mb-3 text-primary">
-                  <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
-                  <h3 className="font-medium text-sm sm:text-base">Người thanh toán</h3>
-                </div>
-                
-                <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 sm:p-5 border border-primary/10 shadow-sm hover:shadow transition-all duration-200">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="relative">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center font-medium text-lg sm:text-xl">
-                          {expense.payer?.name.charAt(0)}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 shadow-md">
-                          <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="ml-4">
-                      <div className="font-semibold text-base sm:text-lg">{expense.payer?.name}</div>
-                      <div className="text-xs sm:text-sm mt-1 flex items-center text-green-600">
-                        <DollarSign className="h-3.5 w-3.5 mr-1" />
-                        <span>Đã thanh toán {formatCurrency(expense.amount)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="order-2">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center text-primary">
-                    <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
-                    <h3 className="font-medium text-sm sm:text-base">Người tham gia</h3>
-                  </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">
-                    {expense.participants?.length} người
-                  </div>
-                </div>
-                
-                <div className="bg-muted/20 rounded-xl p-3 sm:p-4 border shadow-sm">
-                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
-                    {expense.participants?.map((participant) => (
-                      <div 
-                        key={participant.id} 
-                        className="flex items-center bg-background p-2.5 sm:p-3 rounded-lg border border-muted hover:border-primary/20 hover:shadow-sm transition-all duration-200"
-                      >
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-medium text-sm sm:text-base">
-                          {participant.user?.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm sm:text-base truncate">{participant.user?.name}</div>
-                          <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">Phần chi tiêu</div>
-                        </div>
-                        <div className="flex-shrink-0 font-semibold text-sm sm:text-base">{formatCurrency(participant.amount)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
+
       {/* Transactions List */}
       <div className="mb-4">
         <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Các khoản cần thanh toán</h2>
@@ -547,6 +480,100 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
         </div>
       )}
       
+      {/* Expense Summary Card */}
+      {expense && (
+        <Card className="mb-6 shadow-sm hover:shadow-md transition-shadow mt-5">
+          <CardHeader className="bg-muted/50 p-4 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl flex items-center justify-between">
+              <span className="truncate">Thông tin chi tiêu</span>
+            </CardTitle>
+            <CardDescription>
+              <span className="flex flex-wrap items-center gap-3 sm:gap-4 py-1">
+                <span className="flex items-center bg-primary/10 text-primary rounded-full px-3 py-1">
+                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  <span className="font-medium">{formatCurrency(expense.amount)}</span>
+                </span>
+                
+                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
+                  <Users className="h-4 w-4 mr-1.5 text-blue-500" />
+                  <span className="font-medium">{expense.participants?.length} người tham gia</span>
+                </span>
+                
+                <span className="flex items-center bg-muted/50 rounded-full px-3 py-1">
+                  <Calendar className="h-4 w-4 mr-1.5 text-orange-500" />
+                  <span className="font-medium">{formatDate(expense.date || expense.created_at || '')}</span>
+                </span>
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+              <div className="order-1">
+                <div className="flex items-center mb-3 text-primary">
+                  <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
+                  <h3 className="font-medium text-sm sm:text-base">Người thanh toán</h3>
+                </div>
+                
+                <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 sm:p-5 border border-primary/10 shadow-sm hover:shadow transition-all duration-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center font-medium text-lg sm:text-xl">
+                          {expense.payer?.name.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1 shadow-md">
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="ml-4">
+                      <div className="font-semibold text-base sm:text-lg">{expense.payer?.name}</div>
+                      <div className="text-xs sm:text-sm mt-1 flex items-center text-green-600">
+                        <DollarSign className="h-3.5 w-3.5 mr-1" />
+                        <span>Đã thanh toán {formatCurrency(expense.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="order-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center text-primary">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5" />
+                    <h3 className="font-medium text-sm sm:text-base">Người tham gia</h3>
+                  </div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    {expense.participants?.length} người
+                  </div>
+                </div>
+                
+                <div className="bg-muted/20 rounded-xl p-3 sm:p-4 border shadow-sm">
+                  <div className="space-y-3">
+                    {expense.participants?.map((participant) => (
+                      <div 
+                        key={participant.id} 
+                        className="flex items-center bg-background p-2.5 sm:p-3 rounded-lg border border-muted hover:border-primary/20 hover:shadow-sm transition-all duration-200"
+                      >
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-medium text-sm sm:text-base">
+                          {participant.user?.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm sm:text-base truncate">{participant.user?.name}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">Phần chi tiêu</div>
+                        </div>
+                        <div className="flex-shrink-0 font-semibold text-sm sm:text-base">{formatCurrency(participant.amount)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {transactions.length > 0 && (
         <Card className="mt-6 bg-muted/30">
           <CardContent className="p-4 sm:p-6">

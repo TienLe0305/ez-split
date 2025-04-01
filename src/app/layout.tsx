@@ -10,13 +10,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "EzSplitPVN",
   description: "Split expenses with your friends with ease",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: "cover",
-  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

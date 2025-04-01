@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Users, Wallet, Search, MoreHorizontal, Calendar, Split, CheckCircle2, RefreshCw } from 'lucide-react';
-import { getExpensesWithStatus, deleteExpense, ExpenseWithStatus } from '@/lib/api';
+import { Plus, Edit, Trash2, Users, Wallet, Search, MoreHorizontal, Calendar, Split, CheckCircle2 } from 'lucide-react';
+import { deleteExpense } from '@/lib/api';
+import { useExpensesWithStatus, queryKeys } from '@/lib/query/hooks';
 import { Button } from '@/components/ui/button';
 import { CardFooter } from '@/components/ui/card';
 import {
@@ -36,48 +37,33 @@ import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/lib/utils';
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<ExpenseWithStatus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<number | null>(null);
-  const [isReloading, setIsReloading] = useState(false);
+  
+  const { 
+    data: expenses = [], 
+    isLoading, 
+    isError: error, 
+    refetch
+  } = useExpensesWithStatus({
+    queryKey: queryKeys.expensesWithStatus,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   // Get the expense being deleted
   const expenseBeingDeleted = expenseToDelete !== null 
     ? expenses.find(expense => expense.id === expenseToDelete) 
     : null;
 
-  const fetchExpenses = async () => {
-    try {
-      setIsReloading(true);
-      setIsLoading(true);
-      setError(null);
-      const data = await getExpensesWithStatus();
-      setExpenses(data);
-    } catch (err) {
-      setError('Không thể tải danh sách chi tiêu. Vui lòng thử lại sau.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-      setIsReloading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
-
   const handleDelete = async (id: number) => {
     try {
       await deleteExpense(id);
-      setExpenses(expenses.filter(expense => expense.id !== id));
+      refetch(); // Refresh data after deletion
       setDeleteDialogOpen(false);
       setExpenseToDelete(null);
     } catch (err) {
       console.error(err);
-      setError('Không thể xóa chi tiêu. Vui lòng thử lại sau.');
     }
   };
 
@@ -130,18 +116,6 @@ export default function ExpensesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-shrink-0 gap-3 w-full sm:w-auto">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-9 w-full sm:w-auto justify-center relative transition-all duration-200 ease-in-out" 
-              onClick={fetchExpenses}
-              disabled={isLoading || isReloading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 transition-transform ${isReloading ? "animate-spin" : ""}`} />
-              Tải lại
-            </Button>
-          </div>
         </div>
 
         {isLoading ? (
@@ -151,9 +125,8 @@ export default function ExpensesPage() {
           </div>
         ) : error ? (
           <div className="bg-destructive/10 p-6 rounded-lg text-destructive text-center border border-destructive/20">
-            <p className="font-medium mb-2">{error}</p>
-            <Button variant="outline" size="sm" onClick={fetchExpenses}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isReloading ? "animate-spin" : ""}`} />
+            <p className="font-medium mb-2">Không thể tải danh sách chi tiêu. Vui lòng thử lại sau.</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               Thử lại
             </Button>
           </div>
@@ -271,7 +244,7 @@ export default function ExpensesPage() {
                                 </DropdownMenuItem>
                               </Link>
                               <Link href={`/expenses/${expense.id}/edit`}>
-                                <DropdownMenuItem className="cursor-pointer">
+                                <DropdownMenuItem className="cursor-pointer text-green-700 hover:bg-green-50 hover:text-green-800 focus:bg-green-50 focus:text-green-800">
                                   <Edit className="mr-2 h-4 w-4" />
                                   <span>Chỉnh sửa</span>
                                 </DropdownMenuItem>
@@ -373,4 +346,4 @@ export default function ExpensesPage() {
       </AlertDialog>
     </div>
   );
-} 
+}

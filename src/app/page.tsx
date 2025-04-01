@@ -12,6 +12,7 @@ export default function Home() {
     // Check if user is authenticated
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
+      // Redirect to the expenses page
       router.replace('/expenses');
     } else {
       router.replace('/auth/login');

@@ -40,13 +40,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, MoreHorizontal, Pencil, Trash2, Loader2, Users as UsersIcon, Search, Building, CreditCard, RefreshCw } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Loader2, Users as UsersIcon, Search, Building, CreditCard } from 'lucide-react';
 import { User } from '@/lib/api';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/lib/query/hooks';
 
 export default function UsersPage() {
   const { toast } = useToast();
-  const { data: users = [], isLoading, isError, refetch } = useUsers();
+  const { data: users = [], isLoading, isError, refetch } = useUsers({
+    queryKey: ['users'],
+    refetchInterval: 30000, // Automatically refetch every 30 seconds
+  });
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -62,9 +65,6 @@ export default function UsersPage() {
     bank_name: '',
   });
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Inside the component, add a loading state for the reload button
-  const [isReloading, setIsReloading] = useState(false);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,16 +201,6 @@ export default function UsersPage() {
     (user.bank_account && user.bank_account.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Add a reloadData function to properly handle the refetch
-  const reloadData = async () => {
-    try {
-      setIsReloading(true);
-      await refetch();
-    } finally {
-      setIsReloading(false);
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -300,18 +290,6 @@ export default function UsersPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-shrink-0 gap-3 w-full sm:w-auto">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-9 w-full sm:w-auto justify-center relative transition-all duration-200 ease-in-out" 
-              onClick={reloadData}
-              disabled={isLoading || isReloading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 transition-transform ${isReloading ? "animate-spin" : ""}`} />
-              Tải lại
-            </Button>
-          </div>
         </div>
 
         {isLoading ? (
@@ -322,10 +300,6 @@ export default function UsersPage() {
         ) : isError ? (
           <div className="bg-destructive/10 p-6 rounded-lg text-destructive text-center border border-destructive/20">
             <p className="font-medium mb-2">Không thể tải danh sách người dùng. Vui lòng thử lại sau.</p>
-            <Button variant="outline" size="sm" onClick={reloadData}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isReloading ? "animate-spin" : ""}`} />
-              Thử lại
-            </Button>
           </div>
         ) : filteredUsers.length === 0 && searchTerm ? (
           <div className="flex flex-col items-center justify-center py-16 border rounded-lg bg-white dark:bg-gray-950">
@@ -353,16 +327,15 @@ export default function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[10%] min-w-[60px] font-medium">ID</TableHead>
                     <TableHead className="w-[35%] min-w-[180px] font-medium">Tên</TableHead>
                     <TableHead className="w-[25%] min-w-[120px] font-medium">
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         <CreditCard className="h-4 w-4 mr-2" />
                         Số tài khoản
                       </div>
                     </TableHead>
                     <TableHead className="w-[25%] min-w-[120px] font-medium">
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         <Building className="h-4 w-4 mr-2" />
                         Ngân hàng
                       </div>
@@ -373,10 +346,9 @@ export default function UsersPage() {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id} className="group">
-                      <TableCell className="font-medium">{user.id}</TableCell>
                       <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.bank_account || "—"}</TableCell>
-                      <TableCell>{user.bank_name || "—"}</TableCell>
+                      <TableCell className="text-center">{user.bank_account || "—"}</TableCell>
+                      <TableCell className="text-center">{user.bank_name || "—"}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

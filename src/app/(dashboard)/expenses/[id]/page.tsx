@@ -156,7 +156,11 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           </Link>
           
           <Link href={`/expenses/${id}/edit`}>
-            <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 sm:h-9 text-xs sm:text-sm w-full sm:w-auto bg-green-100 text-green-700 hover:bg-green-200 border-green-200"
+            >
               <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               Chỉnh sửa
             </Button>
@@ -164,7 +168,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm w-full sm:w-auto">
+              <Button variant="destructive" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm">
                 <Trash className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Xóa
               </Button>
@@ -243,7 +247,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
               </div>
               
               <div className="bg-muted/20 rounded-xl p-3 sm:p-4 border shadow-sm">
-                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
+                <div className="space-y-3">
                   {expense.participants?.map((participant, index) => (
                     <div 
                       key={`participant-${participant.user_id}-${index}`} 

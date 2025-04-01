@@ -11,7 +11,7 @@ export function formatCurrency(amount: number): string {
     currency: 'VND',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount).replace('₫', 'VNĐ');
 }
 
 export function isMobileDevice(): boolean {

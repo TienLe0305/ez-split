@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt } from 'lucide-react';
 import { getUsers, User, getExpenseById } from '@/lib/api';
 import { useUpdateExpense } from '@/lib/query/hooks';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import {
 import { ThousandsInput } from '@/components/ui/thousands-input';
 import { useToast } from "@/components/ui/use-toast";
 import { ExpenseDetailSkeleton } from '@/components/skeletons';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -45,6 +46,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   const [participantThousands, setParticipantThousands] = useState<{ [key: number]: string }>({});
   const [equalSplit, setEqualSplit] = useState(true);
   const [date, setDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   
   // Use the React Query hook for updating expense
   const updateExpenseMutation = useUpdateExpense({
@@ -83,7 +85,16 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         setAmount(expenseData.amount.toString());
         setAmountInThousands(amountToThousands(expenseData.amount.toString()));
         setPayerId(expenseData.payer_id.toString());
+        
+        // Set date and selectedDate
         setDate(expenseData.date || new Date(expenseData.created_at || '').toISOString().split('T')[0]);
+        
+        // Set selectedDate for DatePicker
+        if (expenseData.date) {
+          setSelectedDate(new Date(expenseData.date));
+        } else if (expenseData.created_at) {
+          setSelectedDate(new Date(expenseData.created_at));
+        }
         
         // Initialize participant data
         const initialParticipants: { [key: number]: boolean } = {};
@@ -334,6 +345,21 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   // Calculate number of selected participants
   const selectedParticipantCount = Object.values(selectedParticipants).filter(Boolean).length;
   
+  // Handle when DatePicker's date changes
+  const handleDateChange = (newDate: Date | undefined) => {
+    setSelectedDate(newDate);
+    
+    // Update the date string for form submission
+    if (newDate) {
+      const year = newDate.getFullYear();
+      const month = String(newDate.getMonth() + 1).padStart(2, '0');
+      const day = String(newDate.getDate()).padStart(2, '0');
+      setDate(`${year}-${month}-${day}`);
+    } else {
+      setDate('');
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className="container mx-auto py-6">
@@ -416,16 +442,13 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
               
               <div className="space-y-3">
                 <Label htmlFor="date" className="text-sm flex items-center gap-1.5">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   Ngày chi tiêu
                 </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                <DatePicker 
+                  date={selectedDate}
+                  setDate={handleDateChange}
+                  placeholder="Chọn ngày chi tiêu"
                   disabled={isLoading || updateExpenseMutation.isPending}
-                  className="h-10 w-full md:w-5/6"
                 />
               </div>
               

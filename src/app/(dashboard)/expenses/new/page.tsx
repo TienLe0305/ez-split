@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt } from 'lucide-react';
 import { getUsers, createExpense, User } from '@/lib/api';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import {
 import { ThousandsInput } from '@/components/ui/thousands-input';
 import { QuickExpenseType } from '@/components/ui/quick-expense-type';
 import { useToast } from "@/components/ui/use-toast";
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function NewExpensePage() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function NewExpensePage() {
   const [participantThousands, setParticipantThousands] = useState<{ [key: number]: string }>({});
   const [equalSplit, setEqualSplit] = useState(true);
   const [date, setDate] = useState(getCurrentDate());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   useEffect(() => {
     const fetchUsers = async () => {
@@ -176,6 +178,21 @@ export default function NewExpensePage() {
   // Toggle equal split
   const toggleEqualSplit = () => {
     setEqualSplit(!equalSplit);
+  };
+  
+  // Handle when DatePicker's date changes
+  const handleDateChange = (newDate: Date | undefined) => {
+    setSelectedDate(newDate);
+    
+    // Update the date string for form submission
+    if (newDate) {
+      const year = newDate.getFullYear();
+      const month = String(newDate.getMonth() + 1).padStart(2, '0');
+      const day = String(newDate.getDate()).padStart(2, '0');
+      setDate(`${year}-${month}-${day}`);
+    } else {
+      setDate('');
+    }
   };
   
   // Validate form before submission
@@ -327,7 +344,7 @@ export default function NewExpensePage() {
             </CardTitle>
           </CardHeader>
           
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-4">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -381,16 +398,13 @@ export default function NewExpensePage() {
               
               <div className="space-y-3">
                 <Label htmlFor="date" className="text-sm flex items-center gap-1.5">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   Ngày chi tiêu
                 </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                <DatePicker 
+                  date={selectedDate}
+                  setDate={handleDateChange}
+                  placeholder="Chọn ngày chi tiêu"
                   disabled={isLoading || isSubmitting}
-                  className="h-10 w-full md:w-5/6"
                 />
               </div>
               
