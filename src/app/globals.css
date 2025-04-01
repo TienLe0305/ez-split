@@ -170,3 +170,51 @@
 .animation-delay-1400 {
   animation-delay: 1400ms;
 }
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  html {
+    font-size: 16px;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+  }
+  
+  /* Add touch-friendly spacing */
+  .mobile-spacing {
+    @apply space-y-4;
+  }
+  
+  /* Larger touch targets for mobile */
+  .mobile-touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
+/* Fix iOS input zoom */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile-optimized scrolling */
+@media (max-width: 640px) {
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Fixed navigation padding space */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
+  }
+}

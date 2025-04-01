@@ -100,16 +100,16 @@ export default function ExpensesPage() {
   };
 
   return (
-    <div className="container px-4 py-6 lg:px-8">
+    <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Chi tiêu</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Chi tiêu</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Quản lý các khoản chi tiêu của nhóm
           </p>
         </div>
         <Link href="/expenses/new">
-          <Button size="sm" className="h-9 gap-1">
+          <Button size="sm" className="h-9 gap-1 w-full sm:w-auto justify-center">
             <Plus className="h-4 w-4" /> Thêm chi tiêu
           </Button>
         </Link>
@@ -127,8 +127,8 @@ export default function ExpensesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-shrink-0 gap-3">
-            <Button variant="outline" size="sm" className="h-9" onClick={fetchExpenses}>
+          <div className="flex flex-shrink-0 gap-3 w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-center" onClick={fetchExpenses}>
               <span className={isLoading ? "animate-spin mr-1" : "mr-1"}>↻</span> Tải lại
             </Button>
           </div>
@@ -159,7 +159,7 @@ export default function ExpensesPage() {
               <Wallet className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-xl font-medium mb-1">Chưa có chi tiêu nào</h3>
-            <p className="text-muted-foreground mb-4 text-center max-w-md">
+            <p className="text-muted-foreground mb-4 text-center max-w-md px-4">
               Hãy thêm khoản chi tiêu đầu tiên để bắt đầu quản lý và chia sẻ chi phí với nhóm bạn
             </p>
             <Link href="/expenses/new">
@@ -171,14 +171,15 @@ export default function ExpensesPage() {
         ) : (
           <>
             <div className="rounded-lg border overflow-hidden bg-white dark:bg-gray-950">
-              <div className="overflow-x-auto">
+              {/* Desktop view: Table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[30%] min-w-[200px] font-medium">Tên chi tiêu</TableHead>
-                      <TableHead className="w-[20%] min-w-[150px] font-medium">Người trả</TableHead>
+                      <TableHead className="w-[30%] min-w-[180px] font-medium">Tên chi tiêu</TableHead>
+                      <TableHead className="w-[20%] min-w-[120px] font-medium">Người trả</TableHead>
                       <TableHead className="w-[15%] min-w-[100px] font-medium text-right">Số tiền</TableHead>
-                      <TableHead className="w-[15%] min-w-[80px] font-medium hidden md:table-cell text-center">
+                      <TableHead className="w-[15%] min-w-[80px] font-medium text-center">
                         <div className="flex items-center justify-center">
                           <Users className="h-4 w-4" />
                         </div>
@@ -195,73 +196,84 @@ export default function ExpensesPage() {
                     {filteredExpenses.map((expense) => (
                       <TableRow key={expense.id} className="group">
                         <TableCell className="font-medium">
-                          <div className="flex items-center">
-                            <span className="truncate">{expense.name}</span>
-                            {expense.all_payments_completed && (
-                              <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                <CheckCircle2 className="mr-1 h-3 w-3" />
-                                Đã thanh toán
-                              </span>
-                            )}
-                            {!expense.all_payments_completed && expense.completed_count > 0 && (
-                              <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                                {expense.completed_count}/{expense.payment_count}
-                              </span>
-                            )}
-                          </div>
+                          <Link href={`/expenses/${expense.id}`} className="block hover:underline focus:outline-none focus:underline">
+                            <div className="flex items-center">
+                              <span className="truncate">{expense.name}</span>
+                              {expense.all_payments_completed && (
+                                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                                  <span className="hidden xs:inline">Đã thanh toán</span>
+                                </span>
+                              )}
+                              {!expense.all_payments_completed && expense.completed_count > 0 && (
+                                <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                                  {expense.completed_count}/{expense.payment_count}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-2 font-medium text-xs">
                               {expense.payer_name.charAt(0)}
                             </div>
-                            <span>{expense.payer_name}</span>
+                            <span className="truncate">{expense.payer_name}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(expense.amount)}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground text-center">
+                        <TableCell className="text-muted-foreground text-center">
                           <div className="flex items-center justify-center">
                             <span className="mr-1">{expense.participants_count || 0}</span>
-                            <Users className="h-3.5 w-3.5" />
+                            <Users className="h-3 w-3" />
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground text-center">
-                          {formatDate(expense?.created_at ?? '')}
+                          {formatDate(expense.created_at || expense.date)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 opacity-50 group-hover:opacity-100 focus:opacity-100"
+                              >
+                                <span className="sr-only">Mở menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                              <DropdownMenuLabel className="text-xs">Hành động</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <Link href={`/expenses/${expense.id}`}>
                                 <DropdownMenuItem className="cursor-pointer">
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Chỉnh sửa
+                                  <Wallet className="mr-2 h-4 w-4" />
+                                  <span>Chi tiết</span>
                                 </DropdownMenuItem>
                               </Link>
                               <Link href={`/expenses/${expense.id}/split`}>
                                 <DropdownMenuItem className="cursor-pointer">
-                                  <Split className="h-4 w-4 mr-2" />
-                                  Xem chia tiền
+                                  <Split className="mr-2 h-4 w-4" />
+                                  <span>Chia tiền</span>
+                                </DropdownMenuItem>
+                              </Link>
+                              <Link href={`/expenses/${expense.id}/edit`}>
+                                <DropdownMenuItem className="cursor-pointer">
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  <span>Chỉnh sửa</span>
                                 </DropdownMenuItem>
                               </Link>
                               <DropdownMenuItem 
                                 className="cursor-pointer text-destructive focus:text-destructive"
-                                onSelect={(e) => {
+                                onClick={(e) => {
                                   e.preventDefault();
                                   openDeleteDialog(expense.id);
                                 }}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Xóa
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Xóa</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -271,10 +283,56 @@ export default function ExpensesPage() {
                   </TableBody>
                 </Table>
               </div>
-              <CardFooter className="flex justify-between p-4 pt-0">
-                <p className="text-sm text-muted-foreground">
-                  Hiển thị {filteredExpenses.length} / {expenses.length} khoản chi tiêu
-                </p>
+              
+              {/* Mobile view for smaller screens - show cards instead of table for better UX */}
+              <div className="sm:hidden space-y-3 px-4 py-4">
+                {filteredExpenses.map((expense) => (
+                  <Link key={expense.id} href={`/expenses/${expense.id}`} className="block">
+                    <div className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-medium truncate">{expense.name}</h3>
+                          {expense.all_payments_completed && (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                              <CheckCircle2 className="mr-0.5 h-3 w-3" />
+                              <span className="hidden xs:inline">Đã TT</span>
+                            </span>
+                          )}
+                          {!expense.all_payments_completed && expense.completed_count > 0 && (
+                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                              {expense.completed_count}/{expense.payment_count}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-medium whitespace-nowrap">{formatCurrency(expense.amount)}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center text-xs text-muted-foreground gap-2">
+                        <div className="flex items-center">
+                          <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-1 font-medium text-xs">
+                            {expense.payer_name.charAt(0)}
+                          </div>
+                          <span className="truncate max-w-[100px]">{expense.payer_name}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Users className="h-3 w-3 mr-1" />
+                          <span>{expense.participants_count || 0}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          <span>{formatDate(expense.created_at || expense.date)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <CardFooter className="px-0 pb-0">
+                <div className="text-sm text-muted-foreground">
+                  {filteredExpenses.length} kết quả
+                </div>
               </CardFooter>
             </div>
           </>
@@ -285,17 +343,17 @@ export default function ExpensesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogTitle>Xác nhận xóa chi tiêu</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa khoản chi tiêu {expenseBeingDeleted ? <>&quot;{expenseBeingDeleted.name}&quot;</> : 'này'}? 
+              Bạn có chắc chắn muốn xóa chi tiêu {expenseBeingDeleted?.name} với số tiền {expenseBeingDeleted ? formatCurrency(expenseBeingDeleted.amount) : ''}? 
               Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => expenseToDelete !== null && handleDelete(expenseToDelete)}
+            <AlertDialogAction 
               className="bg-destructive hover:bg-destructive/90"
+              onClick={() => expenseToDelete !== null && handleDelete(expenseToDelete)}
             >
               Xóa
             </AlertDialogAction>

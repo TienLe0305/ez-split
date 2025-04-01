@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ReceiptText, Calculator, Menu, X, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { MobileNav } from '@/components/mobile-nav';
 
 export default function DashboardLayout({
   children,
@@ -37,7 +38,7 @@ export default function DashboardLayout({
       {/* Mobile header */}
       <header className="lg:hidden sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
+          <div className="mr-4 flex pl-2">
             <Link 
               href="/"
               className="flex items-center space-x-2 font-bold text-xl text-primary"
@@ -179,9 +180,12 @@ export default function DashboardLayout({
 
         {/* Main content */}
         <div className="flex-1 lg:pl-72">
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-24 md:pb-28 lg:pb-0 max-w-[1600px] mx-auto">{children}</main>
         </div>
       </div>
+
+      {/* Mobile bottom navigation with our new component */}
+      <MobileNav />
     </div>
   );
 } 

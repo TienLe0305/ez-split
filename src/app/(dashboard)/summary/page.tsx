@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, RefreshCw, TrendingDown, TrendingUp, Wallet2, UserRound, DollarSign, ArrowRightLeft, Receipt, CheckCircle } from 'lucide-react';
+import { ArrowRight, RefreshCw, Wallet2, UserRound, DollarSign, Receipt, CheckCircle } from 'lucide-react';
 import { getSummary, UserSummary, Transaction, getExpensesTransactions, TransactionsByExpense } from '@/lib/api';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,32 +65,7 @@ export default function SummaryPage() {
       setRefreshing(false);
     }
   };
-
-  // Helper function to determine balance status icon and color
-  const getBalanceStatus = (balance: number) => {
-    if (balance > 0) {
-      return { 
-        icon: <TrendingUp className="h-4 w-4" />, 
-        color: 'text-green-600 dark:text-green-400',
-        bgColor: 'bg-green-50 dark:bg-green-950/50',
-        borderColor: 'border-green-100 dark:border-green-900'
-      };
-    } else if (balance < 0) {
-      return { 
-        icon: <TrendingDown className="h-4 w-4" />, 
-        color: 'text-red-600 dark:text-red-400',
-        bgColor: 'bg-red-50 dark:bg-red-950/50',
-        borderColor: 'border-red-100 dark:border-red-900'
-      };
-    }
-    return { 
-      icon: <ArrowRightLeft className="h-4 w-4" />, 
-      color: 'text-gray-600 dark:text-gray-400', 
-      bgColor: 'bg-gray-50 dark:bg-gray-900',
-      borderColor: 'border-gray-100 dark:border-gray-800'
-    };
-  };
-
+  
   // Format date from ISO string
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -101,17 +76,13 @@ export default function SummaryPage() {
     }).format(date);
   };
 
-  // Get total amount of all transactions
-  const getTotalTransactions = () => {
-    return transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  };
 
   return (
-    <div className="container px-4 py-6 lg:px-8">
+    <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kết quả chia tiền</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Kết quả chia tiền</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Tổng kết chi tiêu và các giao dịch cần thực hiện
           </p>
         </div>
@@ -119,7 +90,7 @@ export default function SummaryPage() {
           size="sm" 
           onClick={refreshSummary}
           disabled={isLoading || refreshing}
-          className="h-9 gap-1"
+          className="h-9 gap-1 w-full sm:w-auto justify-center"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           Cập nhật
@@ -142,124 +113,77 @@ export default function SummaryPage() {
         <>
           <Tabs defaultValue="summary" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid grid-cols-2 w-full max-w-lg mx-auto">
-              <TabsTrigger value="summary" className="flex items-center gap-2">
+              <TabsTrigger value="summary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                 <UserRound className="h-4 w-4" />
-                <span>Tổng kết cá nhân</span>
+                <span className="truncate">Tổng kết cá nhân</span>
               </TabsTrigger>
-              <TabsTrigger value="byExpense" className="flex items-center gap-2">
+              <TabsTrigger value="byExpense" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                 <Receipt className="h-4 w-4" />
-                <span>Theo chi tiêu</span>
+                <span className="truncate">Theo chi tiêu</span>
               </TabsTrigger>
             </TabsList>
             
             <TabsContent value="summary" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {userSummary.map(user => {
-                  const balanceStatus = getBalanceStatus(user.balance);
                   return (
                     <Card key={user.id} className="overflow-hidden transition-all hover:shadow-md rounded-xl">
                       <CardHeader className="pb-2 relative">
-                        <div className="absolute top-3 right-3">
-                          <div className={`${balanceStatus.bgColor} h-7 w-7 rounded-full flex items-center justify-center`}>
-                            {balanceStatus.icon}
+                        <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+                          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
+                            <span className="text-base sm:text-lg font-semibold">{user.name.charAt(0)}</span>
                           </div>
-                        </div>
-                        <CardTitle className="flex items-center gap-3 text-lg">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
-                            <span className="text-lg font-semibold">{user.name.charAt(0)}</span>
-                          </div>
-                          {user.name}
+                          <span className="truncate">{user.name}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-2">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4">
                           <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                              <Wallet2 className="h-3.5 w-3.5" /> Đã chi
+                            <span className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                              <Wallet2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Đã chi
                             </span>
-                            <span className="font-medium">{formatCurrency(user.paid)}</span>
+                            <span className="font-medium text-sm sm:text-base">{formatCurrency(user.paid)}</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                              <DollarSign className="h-3.5 w-3.5" /> Đã tiêu
+                            <span className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                              <DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Đã tiêu
                             </span>
-                            <span className="font-medium">{formatCurrency(user.spent)}</span>
+                            <span className="font-medium text-sm sm:text-base">{formatCurrency(user.spent)}</span>
                           </div>
                         </div>
+                        
+                        {user.received > 0 || user.pending > 0 ? (
+                          <div className="grid grid-cols-2 gap-2 sm:gap-4 mt-3 pt-3 border-t">
+                            <div className="flex flex-col">
+                              <span className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-500" /> Đã nhận
+                              </span>
+                              <span className="font-medium text-sm sm:text-base text-green-600">{formatCurrency(user.received)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                                <RefreshCw className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-500" /> Chờ nhận
+                              </span>
+                              <span className="font-medium text-sm sm:text-base text-orange-600">{formatCurrency(user.pending)}</span>
+                            </div>
+                          </div>
+                        ) : null}
                       </CardContent>
-                      <div className={`p-3 mt-2 ${balanceStatus.bgColor} border-t ${balanceStatus.borderColor}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Cân đối</span>
-                          <span className={`font-semibold flex items-center gap-1 ${balanceStatus.color}`}>
-                            {formatCurrency(user.balance)}
-                          </span>
-                        </div>
-                      </div>
                     </Card>
                   );
                 })}
               </div>
-              
-              {/* Summary overview */}
-              <Card className="mt-6 rounded-xl border-blue-100 dark:border-blue-900 overflow-hidden">
-                <div className="border-l-4 border-blue-500 dark:border-blue-600 pl-4 py-2 ml-6 mt-6">
-                  <CardTitle>Tổng kết giao dịch</CardTitle>
-                  <CardDescription>
-                    Tổng quan về các giao dịch cần thực hiện
-                  </CardDescription>
-                </div>
-                <CardContent className="pt-6">
-                  <div className="flex flex-wrap gap-6 justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50">
-                        <ArrowRightLeft className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">
-                          Số giao dịch
-                        </div>
-                        <div className="text-2xl font-semibold">
-                          {transactions.length}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50">
-                        <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">
-                          Tổng tiền cần chuyển
-                        </div>
-                        <div className="text-2xl font-semibold">
-                          {formatCurrency(getTotalTransactions())}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-t border-blue-100 dark:border-blue-900 p-4">
-                  <Button 
-                    variant="default" 
-                    onClick={() => setActiveTab('byExpense')}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-                  >
-                    Xem chi tiết các giao dịch
-                  </Button>
-                </CardFooter>
-              </Card>
             </TabsContent>
             
             <TabsContent value="byExpense">
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {expensesTransactions.length === 0 ? (
                   <div className="text-center py-10 flex flex-col items-center bg-white dark:bg-gray-950 rounded-xl border shadow-sm">
                     <div className="p-4 rounded-full bg-blue-50 dark:bg-blue-950/50 mb-3">
                       <Receipt className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                     </div>
                     <h3 className="text-lg font-medium mb-1">Không có chi tiêu nào cần thanh toán</h3>
-                    <p className="text-muted-foreground max-w-md">
+                    <p className="text-muted-foreground max-w-md px-4 text-sm">
                       Chưa có khoản chi tiêu nào được thêm hoặc tất cả đã được thanh toán.
                     </p>
                   </div>
@@ -269,13 +193,13 @@ export default function SummaryPage() {
                       key={expenseItem.expenseId} 
                       className="rounded-xl overflow-hidden border-blue-100 dark:border-blue-900 hover:shadow-md transition-all duration-300"
                     >
-                      <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-b border-blue-100 dark:border-blue-900">
-                        <div className="flex items-center justify-between">
+                      <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-b border-blue-100 dark:border-blue-900 p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
-                            <CardTitle className="text-xl font-bold">
+                            <CardTitle className="text-lg sm:text-xl font-bold truncate">
                               {expenseItem.expenseName}
                             </CardTitle>
-                            <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <CardDescription className="mt-1 flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs sm:text-sm">
                               <span>Tổng: {formatCurrency(expenseItem.amount)}</span>
                               <span className="text-gray-300 dark:text-gray-700">|</span>
                               <span>Ngày: {formatDate(expenseItem.date)}</span>
@@ -284,15 +208,16 @@ export default function SummaryPage() {
                             </CardDescription>
                           </div>
                           
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                             {expenseItem.allCompleted && (
-                              <div className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                              <div className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 px-2 sm:px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap">
                                 <CheckCircle className="h-3 w-3" />
-                                Đã thanh toán
+                                <span className="hidden xs:inline">Đã thanh toán</span>
+                                <span className="inline xs:hidden">TT</span>
                               </div>
                             )}
                             <Link href={`/expenses/${expenseItem.expenseId}/split`}>
-                              <Button variant="outline" size="sm" className="border-blue-200 dark:border-blue-800">
+                              <Button variant="outline" size="sm" className="border-blue-200 dark:border-blue-800 text-xs sm:text-sm h-7 sm:h-8">
                                 Xem chi tiết
                               </Button>
                             </Link>
@@ -300,7 +225,7 @@ export default function SummaryPage() {
                         </div>
                       </CardHeader>
                       
-                      <CardContent className="pt-5">
+                      <CardContent className="pt-4 sm:pt-5">
                         <div className="space-y-3">
                           {expenseItem.transactions.map((transaction, idx) => (
                             <div
@@ -311,46 +236,64 @@ export default function SummaryPage() {
                                   : "bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900"
                               } transition-colors duration-200`}
                             >
-                              <div className="p-3">
-                                <div className="flex items-center gap-3">
+                              <div className="p-2 sm:p-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                                   <div className="flex shrink-0 items-center">
-                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                                    <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full ${
                                       transaction.payment_status?.paid
                                         ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
                                         : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
                                     }`}>
-                                      <span className="text-sm font-medium">{transaction.fromName.charAt(0)}</span>
+                                      <span className="text-xs sm:text-sm font-medium">{transaction.fromName.charAt(0)}</span>
                                     </div>
-                                    <div className="relative mx-1 w-5 text-primary">
+                                    <div className="relative mx-1 w-4 sm:w-5 text-primary">
                                       <div className="absolute inset-0 flex items-center">
                                         <div className="h-[2px] w-full bg-primary/20"></div>
                                       </div>
-                                      <ArrowRight className="relative h-3.5 w-3.5" />
+                                      <ArrowRight className="relative h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                     </div>
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                                      <span className="text-sm font-medium">{transaction.toName.charAt(0)}</span>
+                                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                                      <span className="text-xs sm:text-sm font-medium">{transaction.toName.charAt(0)}</span>
                                     </div>
                                   </div>
                                   
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm">
-                                      {transaction.fromName} → {transaction.toName}
+                                  <div className="flex-1 sm:ml-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center text-sm sm:text-base">
+                                        <span className="font-medium text-xs sm:text-sm mr-1">{transaction.fromName}</span>
+                                        <span className="text-muted-foreground text-xs">chuyển cho</span>
+                                        <span className="font-medium text-xs sm:text-sm ml-1">{transaction.toName}</span>
+                                      </div>
+                                      
+                                      {transaction.payment_status?.paid && (
+                                        <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                          <CheckCircle className="h-3 w-3" />
+                                          <span>
+                                            Đã thanh toán lúc {new Date(transaction.payment_status.paid_at || '').toLocaleTimeString('vi-VN', {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                            })}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                     
-                                    {transaction.payment_status?.paid ? (
-                                      <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Đã thanh toán
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        Chưa thanh toán
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="font-bold text-primary text-right">
-                                    {formatCurrency(transaction.amount)}
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-semibold text-sm sm:text-base">{formatCurrency(transaction.amount)}</span>
+                                      
+                                      {!transaction.payment_status?.paid && (transaction.toBankAccount || transaction.toBankName) && (
+                                        <Link 
+                                          href={`/expenses/${expenseItem.expenseId}/split`} 
+                                          className="text-primary hover:text-primary/80 text-xs sm:text-sm flex items-center gap-1"
+                                        >
+                                          <span className="hidden sm:inline">Xem chi tiết</span>
+                                          <span className="sm:hidden">Chi tiết</span>
+                                          <ArrowRight className="h-3 w-3 ml-1" />
+                                        </Link>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -358,14 +301,6 @@ export default function SummaryPage() {
                           ))}
                         </div>
                       </CardContent>
-                      
-                      <CardFooter className="bg-gray-50 dark:bg-gray-900/50 border-t py-3 flex justify-end">
-                        <p className="text-sm font-medium">
-                          Tổng cần thanh toán: <span className="text-primary font-bold ml-1">
-                            {formatCurrency(expenseItem.transactions.reduce((sum, t) => sum + t.amount, 0))}
-                          </span>
-                        </p>
-                      </CardFooter>
                     </Card>
                   ))
                 )}

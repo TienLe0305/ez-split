@@ -31,9 +31,11 @@ export interface Expense {
 export interface UserSummary {
   id: number;
   name: string;
-  paid: number;
-  spent: number;
-  balance: number;
+  paid: number;           // Total amount paid for expenses
+  spent: number;          // Total amount spent (consumption)
+  balance: number;        // Overall balance (paid - spent)
+  received: number;       // Amount already received from others as reimbursement
+  pending: number;        // Amount still pending to be received from others
   bank_account?: string;
   bank_name?: string;
 }

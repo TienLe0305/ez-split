@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Split, Wallet, Users, DollarSign, AlertCircle, Receipt, CalendarIcon } from 'lucide-react';
-import { getUsers, createExpense, User } from '@/lib/api';
+import { getUsers, User, getExpenseById } from '@/lib/api';
+import { useUpdateExpense } from '@/lib/query/hooks';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, getCurrentDate, thousandsToAmount, amountToThousands } from '@/lib/utils';
+import { formatCurrency, thousandsToAmount, amountToThousands } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Accordion,
@@ -20,15 +21,18 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ThousandsInput } from '@/components/ui/thousands-input';
-import { QuickExpenseType } from '@/components/ui/quick-expense-type';
 import { useToast } from "@/components/ui/use-toast";
+import { ExpenseDetailSkeleton } from '@/components/skeletons';
 
-export default function NewExpensePage() {
+export default function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  const numericId = Number(id);
   const router = useRouter();
   const { toast } = useToast();
+  
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Form state
@@ -40,32 +44,74 @@ export default function NewExpensePage() {
   const [participantAmounts, setParticipantAmounts] = useState<{ [key: number]: string }>({});
   const [participantThousands, setParticipantThousands] = useState<{ [key: number]: string }>({});
   const [equalSplit, setEqualSplit] = useState(true);
-  const [date, setDate] = useState(getCurrentDate());
+  const [date, setDate] = useState('');
   
+  // Use the React Query hook for updating expense
+  const updateExpenseMutation = useUpdateExpense({
+    onSuccess: () => {
+      // Show success message and redirect to expense details
+      toast({
+        title: "Chỉnh sửa thành công!",
+        description: "Chi tiêu đã được cập nhật",
+      });
+      
+      router.push(`/expenses/${numericId}`);
+    },
+    onError: (err) => {
+      console.error(err);
+      setError('Có lỗi xảy ra khi cập nhật chi tiêu. Vui lòng thử lại sau.');
+    }
+  });
+  
+  // Fetch expense data and users
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await getUsers();
-        setUsers(data);
         
-        // Initialize selected participants with only the payer selected
+        // Fetch users and expense data in parallel
+        const [usersData, expenseData] = await Promise.all([
+          getUsers(),
+          getExpenseById(numericId)
+        ]);
+        
+        setUsers(usersData);
+        
+        // Initialize form with expense data
+        setName(expenseData.name);
+        setAmount(expenseData.amount.toString());
+        setAmountInThousands(amountToThousands(expenseData.amount.toString()));
+        setPayerId(expenseData.payer_id.toString());
+        setDate(expenseData.date || new Date(expenseData.created_at || '').toISOString().split('T')[0]);
+        
+        // Initialize participant data
         const initialParticipants: { [key: number]: boolean } = {};
         const initialAmounts: { [key: number]: string } = {};
         const initialThousands: { [key: number]: string } = {};
         
-        // Set default payer if there are users
-        if (data.length > 0) {
-          const defaultPayerId = data[0].id;
-          setPayerId(defaultPayerId.toString());
-          
-          // Initialize with only the payer as a participant
-          data.forEach(user => {
-            initialParticipants[user.id] = user.id === defaultPayerId;
-            initialAmounts[user.id] = '';
-            initialThousands[user.id] = '';
-          });
+        // Set all users as unselected initially
+        usersData.forEach(user => {
+          initialParticipants[user.id] = false;
+          initialAmounts[user.id] = '';
+          initialThousands[user.id] = '';
+        });
+        
+        // Mark selected participants and set their amounts
+        const participantsList = expenseData.participants || [];
+        let isCustomSplit = false;
+        
+        participantsList.forEach((participant: { user_id: number; amount: number }) => {
+          initialParticipants[participant.user_id] = true;
+          initialAmounts[participant.user_id] = participant.amount.toString();
+          initialThousands[participant.user_id] = amountToThousands(participant.amount.toString());
+        });
+        
+        // Check if this is an equal split
+        if (participantsList.length > 0) {
+          const firstAmount = participantsList[0].amount;
+          isCustomSplit = !participantsList.every((p: { amount: number }) => Math.abs(p.amount - firstAmount) < 0.01);
+          setEqualSplit(!isCustomSplit);
         }
         
         setSelectedParticipants(initialParticipants);
@@ -73,15 +119,15 @@ export default function NewExpensePage() {
         setParticipantThousands(initialThousands);
         
       } catch (err) {
-        setError('Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.');
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchUsers();
-  }, []);
+    fetchData();
+  }, [numericId]);
   
   // Update participants when payer changes
   useEffect(() => {
@@ -102,11 +148,6 @@ export default function NewExpensePage() {
     setAmount(newAmount.toString());
   };
   
-  // Select an expense type from quick options
-  const handleExpenseTypeSelect = (expenseName: string) => {
-    setName(expenseName);
-  };
-  
   // Calculate equal share when amount or participants change
   useEffect(() => {
     if (equalSplit && amount) {
@@ -123,7 +164,6 @@ export default function NewExpensePage() {
           const userId = parseInt(userIdStr);
           if (selectedParticipants[userId]) {
             newAmounts[userId] = equalShare;
-            // Convert to thousands format for display
             newThousands[userId] = amountToThousands(equalShare);
           } else {
             newAmounts[userId] = '';
@@ -238,7 +278,6 @@ export default function NewExpensePage() {
     if (!validateForm()) return;
     
     try {
-      setIsSubmitting(true);
       setError(null);
       
       // Prepare participants data
@@ -249,33 +288,26 @@ export default function NewExpensePage() {
           participants.push({
             user_id: parseInt(userId),
             amount: parseFloat(participantAmounts[parseInt(userId)]),
-            expense_id: 0 // This will be set by the backend
+            expense_id: numericId // Reference to the existing expense
           });
         }
       }
       
-      // Create expense
-      const response = await createExpense({
-        name,
-        amount: parseFloat(amount),
-        payer_id: parseInt(payerId),
-        date,
-        participants
-      } as unknown as Omit<import('@/lib/api').Expense, 'id' | 'created_at'>);
-      
-      // Redirect to split page with a query parameter that indicates this is a new expense
-      router.push(`/expenses/${response.id}/split?new=true`);
-      
-      toast({
-        title: "Thành công!",
-        description: "Chi tiêu đã được tạo",
+      // Update expense using the mutation
+      updateExpenseMutation.mutate({
+        id: numericId,
+        data: {
+          name,
+          amount: parseFloat(amount),
+          payer_id: parseInt(payerId),
+          date,
+          participants
+        } as unknown as Omit<import('@/lib/api').Expense, 'id' | 'created_at'>
       });
       
     } catch (err) {
       console.error(err);
-      setError('Có lỗi xảy ra khi lưu chi tiêu. Vui lòng thử lại sau.');
-    } finally {
-      setIsSubmitting(false);
+      setError('Có lỗi xảy ra khi cập nhật chi tiêu. Vui lòng thử lại sau.');
     }
   };
   
@@ -302,19 +334,27 @@ export default function NewExpensePage() {
   // Calculate number of selected participants
   const selectedParticipantCount = Object.values(selectedParticipants).filter(Boolean).length;
   
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <ExpenseDetailSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
       <div className="flex flex-col items-start justify-between gap-4 mb-6">
         <div className="w-full flex justify-between items-center">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Thêm chi tiêu</h1>
-          <Link href="/expenses">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Chỉnh sửa chi tiêu</h1>
+          <Link href={`/expenses/${numericId}`}>
             <Button variant="outline" size="sm" className="h-9 gap-1">
               <ArrowLeft className="h-4 w-4" /> Quay lại
             </Button>
           </Link>
         </div>
         <p className="text-muted-foreground text-sm mt-1">
-          Thêm khoản chi tiêu mới và phân chia cho các thành viên
+          Chỉnh sửa thông tin chi tiêu và phân chia cho các thành viên
         </p>
       </div>
 
@@ -347,15 +387,10 @@ export default function NewExpensePage() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  disabled={isLoading || isSubmitting}
+                  disabled={isLoading || updateExpenseMutation.isPending}
                   placeholder="Nhập tên chi tiêu"
                   className="h-10"
                 />
-                
-                <div className="pt-1">
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Chọn nhanh loại chi tiêu</Label>
-                  <QuickExpenseType onSelect={handleExpenseTypeSelect} />
-                </div>
               </div>
               
               <div className="space-y-3">
@@ -368,7 +403,7 @@ export default function NewExpensePage() {
                   value={amountInThousands}
                   onChange={setAmountInThousands}
                   onAmountChange={handleAmountChange}
-                  disabled={isLoading || isSubmitting}
+                  disabled={isLoading || updateExpenseMutation.isPending}
                   placeholder="Nhập số tiền (nghìn đồng)"
                   className="h-10"
                 />
@@ -389,7 +424,7 @@ export default function NewExpensePage() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  disabled={isLoading || isSubmitting}
+                  disabled={isLoading || updateExpenseMutation.isPending}
                   className="h-10 w-full md:w-5/6"
                 />
               </div>
@@ -402,7 +437,7 @@ export default function NewExpensePage() {
                 <Select
                   value={payerId}
                   onValueChange={(value) => setPayerId(value)}
-                  disabled={isLoading || isSubmitting}
+                  disabled={isLoading || updateExpenseMutation.isPending}
                 >
                   <SelectTrigger className="h-10 w-full">
                     <SelectValue placeholder="Chọn người trả tiền" />
@@ -428,7 +463,7 @@ export default function NewExpensePage() {
                       id="equal-split"
                       checked={equalSplit}
                       onCheckedChange={toggleEqualSplit}
-                      disabled={isLoading || isSubmitting}
+                      disabled={isLoading || updateExpenseMutation.isPending}
                     />
                     <label
                       htmlFor="equal-split"
@@ -461,49 +496,43 @@ export default function NewExpensePage() {
                   </CardHeader>
                   
                   <CardContent className="py-3 px-4">
-                    {isLoading ? (
-                      <div className="flex justify-center py-4">
-                        <div className="h-8 w-8 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
-                      </div>
-                    ) : (
-                      <Accordion type="single" collapsible className="w-full" defaultValue="participants">
-                        <AccordionItem value="participants" className="border-none">
-                          <AccordionTrigger className="py-2 px-0">
-                            <span className="text-sm font-medium">{equalSplit ? 'Chia đều cho mọi người' : 'Chia theo số tiền tùy chỉnh'}</span>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-3 pt-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
-                              {users.map(user => (
-                                <div key={user.id} className="flex items-center space-x-2 p-2 rounded-md border bg-background">
-                                  <Checkbox
-                                    id={`user-${user.id}`}
-                                    checked={selectedParticipants[user.id] || false}
-                                    onCheckedChange={() => toggleParticipant(user.id)}
-                                    disabled={isSubmitting}
-                                    className="shrink-0"
+                    <Accordion type="single" collapsible className="w-full" defaultValue="participants">
+                      <AccordionItem value="participants" className="border-none">
+                        <AccordionTrigger className="py-2 px-0">
+                          <span className="text-sm font-medium">{equalSplit ? 'Chia đều cho mọi người' : 'Chia theo số tiền tùy chỉnh'}</span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 pt-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
+                            {users.map(user => (
+                              <div key={user.id} className="flex items-center space-x-2 p-2 rounded-md border bg-background">
+                                <Checkbox
+                                  id={`user-${user.id}`}
+                                  checked={selectedParticipants[user.id] || false}
+                                  onCheckedChange={() => toggleParticipant(user.id)}
+                                  disabled={isLoading || updateExpenseMutation.isPending}
+                                  className="shrink-0"
+                                />
+                                <label
+                                  htmlFor={`user-${user.id}`}
+                                  className="flex-1 text-sm font-medium leading truncate mr-2"
+                                >
+                                  {user.name}
+                                </label>
+                                <div className="w-[130px] flex-shrink-0">
+                                  <ThousandsInput
+                                    value={participantThousands[user.id] || ''}
+                                    onChange={(value) => updateParticipantAmount(user.id, value)}
+                                    disabled={!selectedParticipants[user.id] || equalSplit || isLoading || updateExpenseMutation.isPending}
+                                    placeholder="Số tiền"
+                                    className="h-8 text-sm"
                                   />
-                                  <label
-                                    htmlFor={`user-${user.id}`}
-                                    className="flex-1 text-sm font-medium leading truncate mr-2"
-                                  >
-                                    {user.name}
-                                  </label>
-                                  <div className="w-[130px] flex-shrink-0">
-                                    <ThousandsInput
-                                      value={participantThousands[user.id] || ''}
-                                      onChange={(value) => updateParticipantAmount(user.id, value)}
-                                      disabled={!selectedParticipants[user.id] || equalSplit || isSubmitting}
-                                      placeholder="Số tiền"
-                                      className="h-8 text-sm"
-                                    />
-                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    )}
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </CardContent>
                 </Card>
               </div>
@@ -511,11 +540,11 @@ export default function NewExpensePage() {
           </CardContent>
           
           <CardFooter className="flex justify-between border-t p-4 bg-muted/5">
-            <Link href="/expenses">
+            <Link href={`/expenses/${numericId}`}>
               <Button
                 type="button"
                 variant="outline"
-                disabled={isSubmitting}
+                disabled={isLoading || updateExpenseMutation.isPending}
                 className="w-28"
               >
                 Hủy
@@ -523,10 +552,10 @@ export default function NewExpensePage() {
             </Link>
             <Button
               type="submit"
-              disabled={isLoading || isSubmitting}
+              disabled={isLoading || updateExpenseMutation.isPending}
               className="gap-2 w-28"
             >
-              {isSubmitting ? (
+              {updateExpenseMutation.isPending ? (
                 <>
                   <div className="h-4 w-4 rounded-full border-2 border-background/40 border-t-background animate-spin"></div>
                   <span>Lưu...</span>
