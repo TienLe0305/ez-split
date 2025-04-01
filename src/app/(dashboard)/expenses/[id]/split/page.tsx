@@ -30,22 +30,14 @@ const formatDate = (dateString: string | null | undefined) => {
   if (!dateString) return 'N/A';
   
   try {
-    // Log để debug
-    console.log('Date string received:', dateString);
     
     const date = new Date(dateString);
     
-    // Kiểm tra xem ngày có hợp lệ không
     if (isNaN(date.getTime())) {
       console.error('Invalid date:', dateString);
       return 'N/A';
     }
     
-    // Debug date object
-    console.log('Parsed date:', date.toString());
-    console.log('Date timezone offset:', date.getTimezoneOffset());
-    
-    // Điều chỉnh cho múi giờ Việt Nam và hiển thị thời gian địa phương
     return new Intl.DateTimeFormat('vi-VN', {
       timeZone: 'Asia/Ho_Chi_Minh',
       day: '2-digit',
@@ -121,9 +113,7 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
     onMutate: async ({ transactionId, paid }) => {
       // Lấy thời gian hiện tại chính xác tới mili giây với offset múi giờ Việt Nam (+7)
       const now = new Date();
-      // Đảm bảo thời gian được điều chỉnh cho múi giờ Việt Nam
       const currentTime = now.toISOString();
-      console.log('Current time set for payment:', currentTime);
       
       // Tạo bản sao optimistic của transactions
       const updatedTransactions = transactions.map(transaction => {
@@ -358,9 +348,7 @@ export default function ExpenseSplitPage({ params }: { params: Promise<{ id: str
                             <div className="flex flex-col items-center justify-center p-4">
                               <div className="mb-4 bg-white p-4 rounded-lg shadow-md">
                                 {(() => {
-                                  const qrUrl = generateQRCodeUrl(transaction);
-                                  console.log('QR URL:', qrUrl);
-                                  
+                                  const qrUrl = generateQRCodeUrl(transaction);                                  
                                   if (!transaction.toBankAccount) {
                                     return (
                                       <div className="w-[250px] h-[250px] flex items-center justify-center bg-gray-100 border border-gray-200 rounded-lg text-center p-4">
