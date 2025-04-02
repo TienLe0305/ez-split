@@ -1,6 +1,5 @@
 import * as React from "react"
 import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
@@ -50,12 +49,11 @@ export function DatePicker({
         onChange={handleChange}
         disabled={disabled}
         className={cn(
-          "w-full pl-10",
+          "w-full",
           isMobile && "min-h-[44px] text-base"
         )}
         placeholder={placeholder}
       />
-      <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
     </div>
   );
 } 
