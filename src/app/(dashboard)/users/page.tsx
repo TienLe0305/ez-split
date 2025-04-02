@@ -40,9 +40,61 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, MoreHorizontal, Pencil, Trash2, Loader2, Users as UsersIcon, Search, Building, CreditCard } from 'lucide-react';
+import { 
+  Plus, 
+  MoreHorizontal, 
+  Pencil, 
+  Trash2, 
+  Loader2, 
+  Users as UsersIcon, 
+  Search, 
+  Building, 
+  CreditCard
+} from 'lucide-react';
 import { User } from '@/lib/api';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/lib/query/hooks';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// List of Vietnamese bank codes supported by sepay.vn
+const BANK_CODES = [
+  { code: 'VCB', name: 'Vietcombank (VCB)' },
+  { code: 'CTG', name: 'VietinBank (CTG)' },
+  { code: 'BIDV', name: 'BIDV' },
+  { code: 'VPB', name: 'VPBank (VPB)' },
+  { code: 'TCB', name: 'Techcombank (TCB)' },
+  { code: 'MB', name: 'MBBank (MB)' },
+  { code: 'ACB', name: 'ACB' },
+  { code: 'STB', name: 'Sacombank (STB)' },
+  { code: 'TPB', name: 'TPBank (TPB)' },
+  { code: 'SHB', name: 'SHBank (SHB)' },
+  { code: 'OCB', name: 'OCB' },
+  { code: 'HDB', name: 'HDBank (HDB)' },
+  { code: 'VIB', name: 'VIB Bank' },
+  { code: 'MSB', name: 'MSB (Maritime Bank)' },
+  { code: 'LPB', name: 'LienVietPostBank (LPB)' },
+  { code: 'SEAB', name: 'SeABank (SEAB)' },
+  { code: 'ABB', name: 'ABBank (ABB)' },
+  { code: 'NAB', name: 'NamABank (NAB)' },
+  { code: 'VAB', name: 'VietABank (VAB)' },
+  { code: 'BVB', name: 'BaoVietBank (BVB)' },
+  { code: 'SGB', name: 'SaigonBank (SGB)' },
+  { code: 'VARB', name: 'Agribank (VARB)' },
+  { code: 'CIMB', name: 'CIMB Bank' },
+  { code: 'PGB', name: 'PGBank (PGB)' },
+  { code: 'KLB', name: 'KienLongBank (KLB)' },
+  { code: 'EIB', name: 'Eximbank (EIB)' },
+  { code: 'VCCB', name: 'VietCapitalBank (VCCB)' },
+  { code: 'SCB', name: 'SCB' },
+  { code: 'WOO', name: 'Woori Bank (WOO)' },
+];
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -70,6 +122,11 @@ export default function UsersPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (value: string, fieldName: string) => {
+    setFormData((prev) => ({ ...prev, [fieldName]: value }));
   };
 
   // Open create user dialog
@@ -113,7 +170,7 @@ export default function UsersPage() {
       await createUserMutation.mutateAsync({
         name: formData.name.trim(),
         bank_account: formData.bank_account.trim() || undefined,
-        bank_name: formData.bank_name.trim() || undefined,
+        bank_name: formData.bank_name || undefined,
       });
 
       toast({
@@ -148,7 +205,7 @@ export default function UsersPage() {
         userData: {
           name: formData.name.trim(),
           bank_account: formData.bank_account.trim() || undefined,
-          bank_name: formData.bank_name.trim() || undefined,
+          bank_name: formData.bank_name || undefined,
         },
       });
 
@@ -248,13 +305,27 @@ export default function UsersPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="bank_name">Tên ngân hàng</Label>
-                <Input
-                  id="bank_name"
-                  name="bank_name"
+                <Select
                   value={formData.bank_name}
-                  onChange={handleInputChange}
-                  placeholder="Nhập tên ngân hàng (không bắt buộc)"
-                />
+                  onValueChange={(value) => handleSelectChange(value, 'bank_name')}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Chọn ngân hàng (không bắt buộc)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Ngân hàng phổ biến</SelectLabel>
+                      {BANK_CODES.map((bank) => (
+                        <SelectItem key={bank.code} value={bank.code}>
+                          {bank.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chọn đúng mã ngân hàng để tạo mã QR chuyển khoản.
+                </p>
               </div>
             </div>
             <DialogFooter>
@@ -435,13 +506,27 @@ export default function UsersPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-bank_name">Tên ngân hàng</Label>
-              <Input
-                id="edit-bank_name"
-                name="bank_name"
+              <Select
                 value={formData.bank_name}
-                onChange={handleInputChange}
-                placeholder="Nhập tên ngân hàng (không bắt buộc)"
-              />
+                onValueChange={(value) => handleSelectChange(value, 'bank_name')}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn ngân hàng (không bắt buộc)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Ngân hàng phổ biến</SelectLabel>
+                    {BANK_CODES.map((bank) => (
+                      <SelectItem key={bank.code} value={bank.code}>
+                        {bank.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Chọn đúng mã ngân hàng để tạo mã QR chuyển khoản.
+              </p>
             </div>
           </div>
           <DialogFooter>
